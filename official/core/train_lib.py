@@ -58,7 +58,15 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
         otherwise, returns {}.
   """
 
-  with distribution_strategy.scope():
+  if 'train' in mode:
+    with distribution_strategy.scope():
+      trainer = train_utils.create_trainer(
+          params,
+          task,
+          train='train' in mode,
+          evaluate=('eval' in mode) or run_post_eval,
+          checkpoint_exporter=maybe_create_best_ckpt_exporter(params, model_dir))
+  else:
     trainer = train_utils.create_trainer(
         params,
         task,
@@ -94,29 +102,30 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
       (save_summary) else None)
 
   logging.info('Starts to execute mode: %s', mode)
-  with distribution_strategy.scope():
-    if mode == 'train':
+  if mode == 'train':
+    with distribution_strategy.scope():
       controller.train(steps=params.trainer.train_steps)
-    elif mode == 'train_and_eval':
+  elif mode == 'train_and_eval':
+    with distribution_strategy.scope():
       controller.train_and_evaluate(
           train_steps=params.trainer.train_steps,
           eval_steps=params.trainer.validation_steps,
           eval_interval=params.trainer.validation_interval)
-    elif mode == 'eval':
-      controller.evaluate(steps=params.trainer.validation_steps)
-    elif mode == 'continuous_eval':
+  elif mode == 'eval':
+    controller.evaluate(steps=params.trainer.validation_steps)
+  elif mode == 'continuous_eval':
 
-      def timeout_fn():
-        if trainer.global_step.numpy() >= params.trainer.train_steps:
-          return True
-        return False
+    def timeout_fn():
+      if trainer.global_step.numpy() >= params.trainer.train_steps:
+        return True
+      return False
 
-      controller.evaluate_continuously(
-          steps=params.trainer.validation_steps,
-          timeout=params.trainer.continuous_eval_timeout,
-          timeout_fn=timeout_fn)
-    else:
-      raise NotImplementedError('The mode is not implemented: %s' % mode)
+    controller.evaluate_continuously(
+        steps=params.trainer.validation_steps,
+        timeout=params.trainer.continuous_eval_timeout,
+        timeout_fn=timeout_fn)
+  else:
+    raise NotImplementedError('The mode is not implemented: %s' % mode)
 
   if hasattr(trainer.model, 'count_params'):
     logging.info('Number of trainable params in model: %f Millions.',
