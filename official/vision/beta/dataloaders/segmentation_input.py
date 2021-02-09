@@ -19,6 +19,16 @@ from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import preprocess_ops
 
+import io
+from PIL import Image
+
+
+def _encode_image(image_array, fmt):
+  image = Image.fromarray(image_array)
+  with io.BytesIO() as output:
+    image.save(output, format=fmt)
+    return output.getvalue()
+
 
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for segmentation task."""
@@ -96,6 +106,12 @@ class Parser(parser.Parser):
     image = tf.io.decode_image(data['image/encoded'], channels=3)
     label = tf.io.decode_image(data['image/segmentation/class/encoded'],
                                channels=1)
+    
+    # encoded_jpg = tf.image.encode_jpeg(image)
+    # tf.io.write_file('img.jpg', encoded_jpg)
+    # encoded_jpg2 = tf.image.encode_jpeg(label)
+    # tf.io.write_file('label.jpg', encoded_jpg2)
+
     height = data['image/height']
     width = data['image/width']
     image = tf.reshape(image, (height, width, 3))
