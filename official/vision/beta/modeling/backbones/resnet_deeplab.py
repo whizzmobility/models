@@ -28,6 +28,18 @@ layers = tf.keras.layers
 # Each element in the block configuration is in the following format:
 # (block_fn, num_filters, block_repeats)
 RESNET_SPECS = {
+    18: [
+        ('residual', 64, 2),
+        ('residual', 128, 2),
+        ('residual', 256, 2),
+        ('residual', 512, 2),
+    ],
+    34: [
+        ('residual', 64, 3),
+        ('residual', 128, 4),
+        ('residual', 256, 6),
+        ('residual', 512, 3),
+    ],
     50: [
         ('bottleneck', 64, 3),
         ('bottleneck', 128, 4),
@@ -184,13 +196,17 @@ class DilatedResNet(tf.keras.Model):
 
     x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
+    # -2 because block 1 results in stride 4
     normal_resnet_stage = int(np.math.log2(self._output_stride)) - 2
 
-    endpoints = {}
+    endpoints = {} # idx used here denotes receptive field, not layer number
+    # +1 because block 3 does not increase stride
     for i in range(normal_resnet_stage + 1):
       spec = RESNET_SPECS[model_id][i]
       if spec[0] == 'bottleneck':
         block_fn = nn_blocks.BottleneckBlock
+      elif spec[0] == 'residual':
+        block_fn = nn_blocks.ResidualBlock
       else:
         raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
       x = self._block_group(
@@ -203,6 +219,7 @@ class DilatedResNet(tf.keras.Model):
           stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
               self._init_stochastic_depth_rate, i + 2, 4 + last_stage_repeats),
           name='block_group_l{}'.format(i + 2))
+      print('normal stride for resnet block', i+2)
       endpoints[str(i + 2)] = x
 
     dilation_rate = 2
@@ -210,6 +227,8 @@ class DilatedResNet(tf.keras.Model):
       spec = RESNET_SPECS[model_id][i] if i < 3 else RESNET_SPECS[model_id][-1]
       if spec[0] == 'bottleneck':
         block_fn = nn_blocks.BottleneckBlock
+      elif spec[0] == 'residual':
+        block_fn = nn_blocks.ResidualBlock
       else:
         raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
       x = self._block_group(
@@ -223,11 +242,14 @@ class DilatedResNet(tf.keras.Model):
               self._init_stochastic_depth_rate, i + 2, 4 + last_stage_repeats),
           multigrid=multigrid if i >= 3 else None,
           name='block_group_l{}'.format(i + 2))
+      print('dilated %s for resnet block %s multigrid %s' %(dilation_rate, i+2, i>=3))
       dilation_rate *= 2
 
     endpoints[str(normal_resnet_stage + 2)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    for i, v in endpoints.items():
+      print(i, v, v.shape)
 
     super(DilatedResNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
