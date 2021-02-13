@@ -62,8 +62,9 @@ class SegmentationModule(export_base.ExportModule):
     Returns:
       Tensor holding classification output logits.
     """
-    with tf.device('cpu:0'):
-      images = tf.cast(images, dtype=tf.float32)
+    # Removing nest.map_structure, as it adds a while node that is not static
+    # with tf.device('cpu:0'):
+    #   images = tf.cast(images, dtype=tf.float32)
 
       images = tf.nest.map_structure(
           tf.identity,
