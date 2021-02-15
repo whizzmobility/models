@@ -6,7 +6,7 @@ else
 fi
 
 EXPERIMENT="seg_deeplabv3plus_scooter"
-CONFIG_FILENAME="deeplabv3plus_resnet101_scooter_gpu"
+CONFIG_FILENAME="deeplabv3plus_resnet50_scooter_gpu"
 MODEL_DIR="D:/repos/data_root/${CONFIG_FILENAME}"
 
 set +o posix
@@ -16,5 +16,5 @@ python ../serving/export_saved_model.py \
     --export_dir="${MODEL_DIR}/export" \
     --checkpoint_path="${MODEL_DIR}" \
     --batch_size=1 \
-    --input_image_size=256,256
-    # --config_file="../configs/experiments/semantic_segmentation/${CONFIG_FILENAME}.yaml"
+    --input_image_size=256,256 \
+    --config_file="../configs/experiments/semantic_segmentation/${CONFIG_FILENAME}.yaml"

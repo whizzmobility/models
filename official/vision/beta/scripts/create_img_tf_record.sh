@@ -1,7 +1,21 @@
-export PYTHONPATH="D:/repos/models/"
+DATA_ENGINE_FOLDER=$(dirname $(dirname $(dirname $(dirname `pwd`))))
+if [ -z "$PYTHONPATH" ]; then
+    export PYTHONPATH=${DATA_ENGINE_FOLDER}
+else
+    export PYTHONPATH=$PYTHONPATH:${DATA_ENGINE_FOLDER}
+fi
 
+DATA_DIR="D:/data"
+DATASET_NAME="scooter_labelled"
+DATASET_DIR="${DATA_DIR}/${DATASET_NAME}"
+INNER_DIR_PREFIX="scooter"
+SUBSET=""
+echo $DATASET_DIR
+
+set +o posix
+exec > >(tee create_img_tf_record_output.log) 2>&1
 python ../data/create_img_tf_record.py \
-  --image_dir="D:/data/scooter_labelled_small/scooter_images" \
-  --seg_dir="D:/data/scooter_labelled_small/scooter_seg" \
-  --output_file_prefix="D:/data/test_data/wtf" \
-  1> output.log 2> error.log
+  --image_dir="${DATASET_DIR}/${INNER_DIR_PREFIX}_images/${SUBSET}" \
+  --seg_dir="${DATASET_DIR}/${INNER_DIR_PREFIX}_seg/${SUBSET}" \
+  --output_file_prefix="D:/data/test_data/${SUBSET}_${DATASET_NAME}" \
+  --num_shards=16
