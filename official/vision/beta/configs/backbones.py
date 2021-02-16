@@ -35,6 +35,13 @@ class ResNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class ResNest(hyperparams.Config):
+  """ResNest config."""
+  model_id: int = 50
+  stem_type: str = 'v0'
+
+
+@dataclasses.dataclass
 class DilatedResNet(hyperparams.Config):
   """DilatedResNet config."""
   model_id: int = 50
@@ -83,6 +90,7 @@ class Backbone(hyperparams.OneOfConfig):
   Attributes:
     type: 'str', type of backbone be used, one the of fields below.
     resnet: resnet backbone config.
+    resnest: resnest backbone config.
     dilated_resnet: dilated resnet backbone for semantic segmentation config.
     revnet: revnet backbone config.
     efficientnet: efficientnet backbone config.
@@ -91,6 +99,7 @@ class Backbone(hyperparams.OneOfConfig):
   """
   type: Optional[str] = None
   resnet: ResNet = ResNet()
+  resnest: ResNest = ResNest()
   dilated_resnet: DilatedResNet = DilatedResNet()
   revnet: RevNet = RevNet()
   efficientnet: EfficientNet = EfficientNet()
