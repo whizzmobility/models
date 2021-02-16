@@ -1,13 +1,4 @@
-DATA_ENGINE_FOLDER=$(dirname $(dirname $(dirname $(dirname `pwd`))))
-if [ -z "$PYTHONPATH" ]; then
-    export PYTHONPATH=${DATA_ENGINE_FOLDER}
-else
-    export PYTHONPATH=$PYTHONPATH:${DATA_ENGINE_FOLDER}
-fi
-
-EXPERIMENT="seg_deeplabv3plus_scooter"
-CONFIG_FILENAME="deeplabv3plus_resnet50_scooter_gpu"
-MODEL_DIR="D:/repos/data_root/${CONFIG_FILENAME}"
+. ./environment_setup.sh
 IMAGE_DIR_GLOB="D:/models/test_images/11-May-2019-18-31-31/*.png"
 
 set +o posix
