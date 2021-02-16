@@ -1,0 +1,84 @@
+# See https://arxiv.org/pdf/1706.05587.pdf ablation study
+# See https://arxiv.org/pdf/1802.02611.pdf for training configurations
+runtime:
+  distribution_strategy: 'mirrored'
+  # mixed_precision_dtype: 'float32'
+  num_gpus: 3
+task:
+  model:
+    num_classes: 19
+    input_size: [256, 256, 3]
+    backbone:
+      type: 'efficientnet'
+      efficientnet:
+        model_id: b0
+        # output_stride: 16
+        # stem_type: 'v1'
+        se_ratio: 0.0
+        stochastic_depth_drop_rate: 0.2
+        # multigrid: [1, 2, 4]
+    decoder:
+      aspp:
+        level: 5 # ln(output_stride)/ln(2)
+        dilation_rates: [6, 12, 18] ###
+        ### pool_kernel_size: [512, 1024]
+    head:
+      level: 5
+      num_convs: 2
+      feature_fusion: 'deeplabv3plus'
+      low_level: 2
+      low_level_num_filters: 48
+    norm_activation:
+      activation: 'swish'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  losses:
+    l2_weight_decay: 0.0001 ###
+    ignore_label: 250 ###
+    ### top_k_percent_pixels: 1.0  # only backpropagate loss for the topk 100% pixels.
+  train_data:
+    output_size: [256, 256] ### [512, 1024]
+    train_on_crops: true
+    input_path: 'D:/data/test_data/val**'
+    is_training: true
+    global_batch_size: 16
+    dtype: 'float32'
+    aug_rand_hflip: true
+    aug_scale_max: 2.0
+    aug_scale_min: 0.5
+  validation_data:
+    output_size: [256, 256] ### [1024, 2048]
+    input_path: 'D:/data/test_data/val**'
+    is_training: false
+    global_batch_size: 1 ### 16
+    dtype: 'float32'
+    drop_remainder: false
+    resize_eval_groundtruth: true
+trainer:
+  optimizer_config:
+    learning_rate:
+      polynomial:
+        decay_steps: 345000 # train step_per_epoch * 200
+        initial_learning_rate: 0.007
+        end_learning_rate: 0.0 ###
+        power: 0.9
+      type: polynomial
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+        warmup_steps: 3450 # train steps_per_epoch * 2
+      type: linear
+  steps_per_loop: 1725      # train steps_per_epoch
+  summary_interval: 1725    # train steps_per_epoch
+  train_steps: 345000      # train steps_per_epoch * 200
+  validation_interval: 1725 # train steps_per_epoch
+  validation_steps: 6915    # val steps_per_epoch
+  checkpoint_interval: 1725 # train steps_per_epoch
+  best_checkpoint_eval_metric: 'mean_iou' ###
+  continuous_eval_timeout: 3600

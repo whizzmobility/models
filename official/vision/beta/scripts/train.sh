@@ -6,7 +6,7 @@ else
 fi
 
 EXPERIMENT="seg_deeplabv3plus_scooter"
-CONFIG_FILENAME="deeplabv3plus_resnet50_scooter_gpu"
+CONFIG_FILENAME="deeplabv3plus_efficientnetb0_scooter_gpu"
 MODEL_DIR="D:/repos/data_root/${CONFIG_FILENAME}"
 
 if [ ! -d $MODEL_DIR ]; then
