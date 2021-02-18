@@ -196,6 +196,9 @@ class EfficientNet(tf.keras.Model):
             x)
     endpoints[str(endpoint_level)] = tf_utils.get_activation(activation)(x)
 
+    for i, v in endpoints.items():
+      print(i, v, v.shape)
+
     super(EfficientNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
 
