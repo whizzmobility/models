@@ -521,6 +521,9 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     """
     super(InvertedBottleneckBlock, self).__init__(**kwargs)
 
+    if strides != 1 and dilation_rate != 1:
+      raise ValueError(f'Cannot use both strides {strides} and dilation_rate {dilation_rate} at the same time.')
+
     self._in_filters = in_filters
     self._out_filters = out_filters
     self._expand_ratio = expand_ratio

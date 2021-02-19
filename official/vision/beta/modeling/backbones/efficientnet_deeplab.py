@@ -15,8 +15,8 @@
 """Contains definitions of EfficientNet Networks with Deeplab modifications."""
 
 import math
+import logging
 # Import libraries
-import numpy as np
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
@@ -30,13 +30,13 @@ layers = tf.keras.layers
 # (block_fn, block_repeats, kernel_size, strides, expand_ratio, in_filters,
 # out_filters, is_output)
 EN_B0_BLOCK_SPECS = [
-    ('mbconv', 1, 3, 1, 1, 32, 16, False),
-    ('mbconv', 2, 3, 2, 6, 16, 24, True),
-    ('mbconv', 2, 5, 2, 6, 24, 40, True),
-    ('mbconv', 3, 3, 2, 6, 40, 80, False), # dil 2, only depthwise affected
-    ('mbconv', 3, 5, 1, 6, 80, 112, True), # dil 2, only depthwise affectd
-    ('mbconv', 4, 5, 2, 6, 112, 192, False), # dil 4, only depthwise affected
-    ('mbconv', 1, 3, 1, 6, 192, 320, True), # dil 4, only depthwise affected
+    ['mbconv', 1, 3, 1, 1, 32, 16, False],
+    ['mbconv', 2, 3, 2, 6, 16, 24, True],
+    ['mbconv', 2, 5, 2, 6, 24, 40, True],
+    ['mbconv', 3, 3, 2, 6, 40, 80, False], # dil 2, only depthwise affected
+    ['mbconv', 3, 5, 1, 6, 80, 112, True], # dil 2, only depthwise affectd
+    ['mbconv', 4, 5, 2, 6, 112, 192, False], # dil 4, only depthwise affected
+    ['mbconv', 1, 3, 1, 6, 192, 320, True], # dil 4, only depthwise affected
 ]
 
 SCALING_MAP = {
@@ -58,14 +58,27 @@ def round_repeats(repeats, multiplier, skip=False):
   return int(math.ceil(multiplier * repeats))
 
 
-def block_spec_decoder(specs, width_scale, depth_scale):
+def block_spec_decoder(specs, width_scale, depth_scale, output_stride):
   """Decode specs for a block."""
   decoded_specs = []
+  
+  dilation_rate = 1
+  current_stride = 2
   for s in specs:
-    s = s + (
+    
+    # limit output stride, modify stride and dilation rate accordingly
+    stride = s[3]
+    if stride > 1:
+      current_stride *= stride
+      if current_stride > output_stride:
+        dilation_rate *= stride
+        s[3] = 1
+
+    s = s + [
         width_scale,
         depth_scale,
-    )
+        dilation_rate
+    ]
     decoded_specs.append(BlockSpec(*s))
   return decoded_specs
 
@@ -173,18 +186,10 @@ class DilatedEfficientNet(tf.keras.Model):
     endpoints = {}
     endpoint_level = 2
     decoded_specs = block_spec_decoder(EN_B0_BLOCK_SPECS, width_scale,
-                                       depth_scale)
-    
-    dilation_rate = 1
-    current_stride = 2
+                                       depth_scale, output_stride)
+
     for i, specs in enumerate(decoded_specs):
-      if specs.strides > 1:
-        current_stride *= specs.strides
-        if current_stride > output_stride:
-          dilation_rate *= specs.strides
-          specs.strides = 1
-      print(i, 'stride', specs.strides, 'actual stride', current_stride, 'dil', dilation_rate)
-      specs.dilation_rate = dilation_rate
+      logging.info(f"{i}, stride, {specs.strides}, dil, {specs.dilation_rate}")
       x = self._block_group(
           inputs=x, specs=specs, name='block_group_{}'.format(i))
       if specs.is_output:
@@ -211,7 +216,7 @@ class DilatedEfficientNet(tf.keras.Model):
     endpoints[str(endpoint_level)] = tf_utils.get_activation(activation)(x)
   
     for i, v in endpoints.items():
-      print(i, v, v.shape)
+      logging.info(f"{i}, {v}, {v.shape}")
 
     super(DilatedEfficientNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
@@ -234,6 +239,8 @@ class DilatedEfficientNet(tf.keras.Model):
     else:
       raise ValueError('Block func {} not supported.'.format(specs.block_fn))
 
+    use_depthwise = True
+
     x = block_fn(
         in_filters=specs.in_filters,
         out_filters=specs.out_filters,
@@ -249,7 +256,8 @@ class DilatedEfficientNet(tf.keras.Model):
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
         norm_momentum=self._norm_momentum,
-        norm_epsilon=self._norm_epsilon)(
+        norm_epsilon=self._norm_epsilon,
+        use_depthwise=use_depthwise)(
             inputs)
 
     for _ in range(1, specs.block_repeats):
@@ -268,7 +276,8 @@ class DilatedEfficientNet(tf.keras.Model):
           activation=self._activation,
           use_sync_bn=self._use_sync_bn,
           norm_momentum=self._norm_momentum,
-          norm_epsilon=self._norm_epsilon)(
+          norm_epsilon=self._norm_epsilon,
+          use_depthwise=use_depthwise)(
               x)
 
     return tf.identity(x, name=name)
