@@ -3,9 +3,10 @@ export CUDA_VISIBLE_DEVICES=0
 # disable shared memory transport and force to use P2P, which is default for NCCL2.6
 # not enough memory in /dev/shm otherwise
 # export NCCL_SHM_DISABLE=1
+# export NCCL_DEBUG=WARN
 
 EXPERIMENT="seg_deeplabv3plus_scooter"
-CONFIG_FILENAME="deeplabv3plus_efficientnetb0_scooter_gpu"
+CONFIG_FILENAME="deeplabv3plus_dilatedefficientnetb0_scooter_gpu"
 MODEL_DIR="D:/repos/data_root/${CONFIG_FILENAME}"
 
 NUM_GPUS=2
@@ -13,7 +14,7 @@ TRAIN_BATCH_SIZE=16
 INPUT_PATH="D:/data/test_data/val**"
 NUMBER_OF_IMAGES=6915
 TRAIN_STEPS_PER_EPOCH=$((NUMBER_OF_IMAGES / TRAIN_BATCH_SIZE))
-TRAIN_STEPS=$((TRAIN_STEPS_PER_EPOCH * 500))
+TRAIN_STEPS=$((TRAIN_STEPS_PER_EPOCH * 2000)) # normally 500 epochs
 DECAY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 24 / 10))
 WARMUP_STEPS=$((TRAIN_STEPS_PER_EPOCH * 5))
 

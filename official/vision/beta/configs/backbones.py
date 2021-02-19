@@ -62,6 +62,15 @@ class EfficientNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class DilatedEfficientNet(hyperparams.Config):
+  """EfficientNet config."""
+  model_id: str = 'b0'
+  output_stride: int = 16
+  se_ratio: float = 0.0
+  stochastic_depth_drop_rate: float = 0.0
+
+
+@dataclasses.dataclass
 class MobileNet(hyperparams.Config):
   """Mobilenet config."""
   model_id: str = 'MobileNetV2'
@@ -94,6 +103,7 @@ class Backbone(hyperparams.OneOfConfig):
     dilated_resnet: dilated resnet backbone for semantic segmentation config.
     revnet: revnet backbone config.
     efficientnet: efficientnet backbone config.
+    dilated_efficientnet: dilated efficientnet backbone for semantic segmentation config.
     spinenet: spinenet backbone config.
     mobilenet: mobilenet backbone config.
   """
@@ -103,5 +113,6 @@ class Backbone(hyperparams.OneOfConfig):
   dilated_resnet: DilatedResNet = DilatedResNet()
   revnet: RevNet = RevNet()
   efficientnet: EfficientNet = EfficientNet()
+  dilated_efficientnet: DilatedEfficientNet = DilatedEfficientNet()
   spinenet: SpineNet = SpineNet()
   mobilenet: MobileNet = MobileNet()
