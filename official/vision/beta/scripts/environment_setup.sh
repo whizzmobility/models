@@ -2,8 +2,9 @@ export CUDA_VISIBLE_DEVICES=0
 
 # disable shared memory transport and force to use P2P, which is default for NCCL2.6
 # not enough memory in /dev/shm otherwise
-# export NCCL_SHM_DISABLE=1
-# export NCCL_DEBUG=WARN
+export NCCL_SHM_DISABLE=1
+export NCCL_DEBUG=WARN
+export TF_CPP_MIN_LOG_LEVEL=INFO
 
 EXPERIMENT="seg_deeplabv3plus_scooter"
 CONFIG_FILENAME="deeplabv3plus_dilatedefficientnetb0_scooter_gpu"
@@ -17,6 +18,7 @@ TRAIN_STEPS_PER_EPOCH=$((NUMBER_OF_IMAGES / TRAIN_BATCH_SIZE))
 TRAIN_STEPS=$((TRAIN_STEPS_PER_EPOCH * 2000)) # normally 500 epochs
 DECAY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 24 / 10))
 WARMUP_STEPS=$((TRAIN_STEPS_PER_EPOCH * 5))
+SUMMARY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 2))
 
 DATA_ENGINE_FOLDER=$(dirname $(dirname $(dirname $(dirname `pwd`))))
 if [ -z "$PYTHONPATH" ]; then
@@ -42,11 +44,11 @@ PARAMS="{ \
       warmup: {linear: {warmup_steps: ${WARMUP_STEPS}}} \
     }, \
     steps_per_loop: ${TRAIN_STEPS_PER_EPOCH}, \
-    summary_interval: ${TRAIN_STEPS_PER_EPOCH}, \
+    summary_interval: ${SUMMARY_STEPS}, \
     train_steps: ${TRAIN_STEPS}, \
     validation_interval: ${TRAIN_STEPS_PER_EPOCH}, \
     validation_steps: ${NUMBER_OF_IMAGES}, \
-    checkpoint_interval: ${TRAIN_STEPS_PER_EPOCH}, \
+    checkpoint_interval: ${SUMMARY_STEPS}, \
   } \
 }"
 

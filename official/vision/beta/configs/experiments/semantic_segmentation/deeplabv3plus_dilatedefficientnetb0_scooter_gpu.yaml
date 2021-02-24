@@ -12,7 +12,7 @@ task:
       type: 'dilated_efficientnet'
       dilated_efficientnet:
         model_id: b0
-        output_stride: 16 # stride 8 seems to be an issue, stuck at random training step
+        output_stride: 8 # stride 8 seems to be an issue, stuck at random training step
         # stem_type: 'v1'
         se_ratio: 0.0
         stochastic_depth_drop_rate: 0.2
