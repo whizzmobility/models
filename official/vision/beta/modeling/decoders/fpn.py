@@ -115,8 +115,11 @@ class FPN(tf.keras.Model):
     # Build top-down path.
     feats = {str(backbone_max_level): feats_lateral[str(backbone_max_level)]}
     for level in range(backbone_max_level - 1, min_level - 1, -1):
-      feats[str(level)] = spatial_transform_ops.nearest_upsampling(
-          feats[str(level + 1)], 2) + feats_lateral[str(level)]
+      # feats[str(level)] = spatial_transform_ops.nearest_upsampling(
+      #     feats[str(level + 1)], 2) + feats_lateral[str(level)]
+      print(level, feats[str(level + 1)].shape, feats_lateral[str(level)].shape)
+      size = feats_lateral[str(level)].shape
+      feats[str(level)] = tf.keras.layers.UpSampling2D(size=2, interpolation='nearest')(feats[str(level + 1)]) + feats_lateral[str(level)]
 
     # TODO(xianzhi): consider to remove bias in conv2d.
     # Build post-hoc 3x3 convolution kernel.
