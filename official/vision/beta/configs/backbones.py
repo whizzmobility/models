@@ -76,6 +76,7 @@ class MobileNet(hyperparams.Config):
   model_id: str = 'MobileNetV2'
   filter_size_scale: float = 1.0
   stochastic_depth_drop_rate: float = 0.0
+  output_stride: Optional[int] = None
 
 
 @dataclasses.dataclass

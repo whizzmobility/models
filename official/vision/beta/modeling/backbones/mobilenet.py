@@ -552,8 +552,11 @@ class MobileNet(tf.keras.Model):
 
     x, endpoints = self._mobilenet_base(inputs=inputs)
 
-    endpoints[max(endpoints.keys()) + 1] = x
+    endpoints[str(int(max(endpoints.keys())) + 1)] = x
+    
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
+    for k, v in self._output_specs.items():
+      print(k, v)
 
     super(MobileNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
@@ -686,7 +689,7 @@ class MobileNet(tf.keras.Model):
         raise ValueError('Unknown block type {} for layer {}'.format(
             block_def.block_fn, i))
 
-      endpoints[endpoint_level] = net
+      endpoints[str(endpoint_level)] = net
       endpoint_level += 1
       net = tf.identity(net, name=block_name)
     return net, endpoints
@@ -736,6 +739,7 @@ def build_mobilenet(
       model_id=backbone_cfg.model_id,
       filter_size_scale=backbone_cfg.filter_size_scale,
       input_specs=input_specs,
+      output_stride=backbone_cfg.output_stride,
       stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
