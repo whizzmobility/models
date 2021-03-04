@@ -156,9 +156,9 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
     for key, def_name in function_keys.items():
       if key == 'image_tensor':
         input_signature = tf.TensorSpec(
-            shape=[self._batch_size] + [None] * len(self._input_image_size) +
+            shape=[self._batch_size] + self._input_image_size +
             [self._num_channels],
-            dtype=tf.uint8)
+            dtype=tf.int32)
         signatures[
             def_name] = self.inference_from_image_tensors.get_concrete_function(
                 input_signature)

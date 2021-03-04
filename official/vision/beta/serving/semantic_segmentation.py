@@ -67,15 +67,20 @@ class SegmentationModule(export_base.ExportModule):
       with tf.device('cpu:0'):
         images = tf.cast(images, dtype=tf.float32)
 
-      images = tf.nest.map_structure(
-          tf.identity,
-          tf.map_fn(
-              self._build_inputs, elems=images,
-              fn_output_signature=tf.TensorSpec(
-                  shape=self._input_image_size + [3], dtype=tf.float32),
-              parallel_iterations=32
-              )
-          )
+        images = tf.nest.map_structure(
+            tf.identity,
+            tf.map_fn(
+                self._build_inputs, elems=images,
+                fn_output_signature=tf.TensorSpec(
+                    shape=self._input_image_size + [3], dtype=tf.float32),
+                parallel_iterations=32
+                )
+            )
+    else:
+      images = tf.cast(images, dtype=tf.float32)
+      images = tf.squeeze(images)
+      images = self._build_inputs(images)
+      images = tf.expand_dims(images, axis=0)
 
     masks = self.inference_step(images)
     masks = tf.image.resize(masks, self._input_image_size, method='bilinear')
