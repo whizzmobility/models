@@ -16,6 +16,7 @@
 """Backbones package definition."""
 
 from official.vision.beta.modeling.backbones.efficientnet import EfficientNet
+from official.vision.beta.modeling.backbones.efficientnet_kerasapp import EfficientNetKerasApp
 from official.vision.beta.modeling.backbones.efficientnet_deeplab import DilatedEfficientNet
 from official.vision.beta.modeling.backbones.mobilenet import MobileNet
 from official.vision.beta.modeling.backbones.resnet import ResNet

@@ -9,6 +9,7 @@ export TF_CPP_MIN_LOG_LEVEL=INFO
 EXPERIMENT="seg_deeplabv3plus_scooter"
 CONFIG_FILENAME="deeplabv3plus_dilatedefficientnetb0_scooter_gpu"
 MODEL_DIR="D:/repos/data_root/${CONFIG_FILENAME}"
+CHECKPOINT_INIT="" #"D:/models/experiments/ckpt_renaming/actual"
 
 NUM_GPUS=2
 TRAIN_BATCH_SIZE=16
@@ -16,7 +17,7 @@ INPUT_PATH="D:/data/test_data/val**"
 NUMBER_OF_IMAGES=6915
 TRAIN_STEPS_PER_EPOCH=$((NUMBER_OF_IMAGES / TRAIN_BATCH_SIZE))
 TRAIN_STEPS=$((TRAIN_STEPS_PER_EPOCH * 2000)) # normally 500 epochs
-DECAY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 24 / 10))
+DECAY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 10))
 WARMUP_STEPS=$((TRAIN_STEPS_PER_EPOCH * 5))
 SUMMARY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 2))
 
@@ -36,7 +37,9 @@ PARAMS="{ \
     }, \
     validation_data: { \
       input_path: ${INPUT_PATH} \
-    } \
+    }, \
+    init_checkpoint: ${CHECKPOINT_INIT}, \
+    init_checkpoint_modules: 'backbone' \
   }, \
   trainer: { \
     optimizer_config: { \

@@ -62,6 +62,12 @@ class EfficientNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class EfficientNetKerasApp(hyperparams.Config):
+  """EfficientNetKerasApp config."""
+  model_id: str = 'b0'
+
+
+@dataclasses.dataclass
 class DilatedEfficientNet(hyperparams.Config):
   """EfficientNet config."""
   model_id: str = 'b0'
@@ -114,6 +120,7 @@ class Backbone(hyperparams.OneOfConfig):
   dilated_resnet: DilatedResNet = DilatedResNet()
   revnet: RevNet = RevNet()
   efficientnet: EfficientNet = EfficientNet()
+  efficientnetkerasapp: EfficientNetKerasApp = EfficientNetKerasApp()
   dilated_efficientnet: DilatedEfficientNet = DilatedEfficientNet()
   spinenet: SpineNet = SpineNet()
   mobilenet: MobileNet = MobileNet()
