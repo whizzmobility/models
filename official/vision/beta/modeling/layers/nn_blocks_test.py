@@ -149,6 +149,31 @@ class BottleneckResidualInnerTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(expected_output_shape, output.shape.as_list())
 
 
+class HardBlockTest(parameterized.TestCase, tf.test.TestCase):
+
+  @combinations.generate(distribution_strategy_combinations())
+  def test_shape(self, distribution):
+    
+    # Each test config entry follows the following format
+    # (expected channels, batch size, base channels, height, width, growth rate, layers)
+    test_config = [
+      (48, 8, 48, 64, 64, 10, 4),
+      (78, 8, 64, 32, 32, 16, 4),
+      (160, 8, 96, 16, 16, 18, 8),
+      (214, 8, 160, 8, 8, 24, 8),
+      (286, 8, 224, 4, 4, 32, 8)
+    ]
+    
+    for expected_channels, b, c, h, w, gr, layers in test_config:
+      input_tensor = tf.random.uniform(shape=[b, h, w, c])
+      with distribution.scope():
+        test_layer = nn_blocks.HardBlock(in_channels=c, growth_rate=gr, growth_multiplier=1.7, n_layers=layers)
+
+      output = test_layer(input_tensor)
+      expected_output_shape = [b, h, w, expected_channels] # channel depends on harmonic layers (10 + 10 + 28)
+      self.assertEqual(expected_output_shape, output.shape.as_list())
+
+
 class ReversibleLayerTest(parameterized.TestCase, tf.test.TestCase):
 
   @combinations.generate(distribution_strategy_combinations())

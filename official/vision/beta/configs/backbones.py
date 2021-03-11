@@ -71,6 +71,12 @@ class DilatedEfficientNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class HardNet(hyperparams.Config):
+  """HardNet config."""
+  model_id: int = 70
+
+
+@dataclasses.dataclass
 class MobileNet(hyperparams.Config):
   """Mobilenet config."""
   model_id: str = 'MobileNetV2'
@@ -105,6 +111,7 @@ class Backbone(hyperparams.OneOfConfig):
     revnet: revnet backbone config.
     efficientnet: efficientnet backbone config.
     dilated_efficientnet: dilated efficientnet backbone for semantic segmentation config.
+    hardnet: hardnet backbone for semantic segmentation config
     spinenet: spinenet backbone config.
     mobilenet: mobilenet backbone config.
   """
@@ -115,5 +122,6 @@ class Backbone(hyperparams.OneOfConfig):
   revnet: RevNet = RevNet()
   efficientnet: EfficientNet = EfficientNet()
   dilated_efficientnet: DilatedEfficientNet = DilatedEfficientNet()
+  hardnet: HardNet = HardNet()
   spinenet: SpineNet = SpineNet()
   mobilenet: MobileNet = MobileNet()

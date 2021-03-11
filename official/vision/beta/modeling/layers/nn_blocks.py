@@ -1273,3 +1273,173 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     x = self._conv1(x)
     x = self._norm1(x)
     return self._activation_fn(x)
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class HardBlock(tf.keras.layers.Layer):
+  """ A Hardblock Block """
+
+  def __init__(self,
+               in_channels,
+               growth_rate,
+               growth_multiplier,
+               n_layers,
+               stochastic_depth_drop_rate=None,
+               kernel_initializer='VarianceScaling',
+               kernel_regularizer=None,
+               bias_regularizer=None,
+               activation='relu',
+               use_sync_bn=False,
+               norm_momentum=0.99,
+               norm_epsilon=0.001,
+               **kwargs):
+    """A Hard block with BN after convolutions.
+
+    Args:
+      in_channels: `int` number of filters for the input
+      growth_rate: 
+      growth_multiplier: 
+      n_layers: 
+      stochastic_depth_drop_rate: `float` or None. if not None, drop rate for
+        the stochastic depth layer.
+      kernel_initializer: kernel_initializer for convolutional layers.
+      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+                          Default to None.
+      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+                        Default to None.
+      activation: `str` name of the activation function.
+      use_sync_bn: if True, use synchronized batch normalization.
+      norm_momentum: `float` normalization omentum for the moving average.
+      norm_epsilon: `float` small float added to variance to avoid dividing by
+        zero.
+      **kwargs: keyword arguments to be passed.
+    """
+    super(HardBlock, self).__init__(**kwargs)
+
+    self._in_channels = in_channels
+    self._growth_rate = growth_rate
+    self._growth_multiplier = growth_multiplier
+    self._n_layers = n_layers
+    self._use_sync_bn = use_sync_bn
+    self._activation = activation
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._kernel_initializer = kernel_initializer
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_regularizer = bias_regularizer
+
+    if use_sync_bn:
+      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = tf.keras.layers.BatchNormalization
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+    self._activation_fn = tf_utils.get_activation(activation)
+
+  def get_link(self, layer, base_channels, growth_rate, growth_multiplier):
+    """ Calculates number of input and output channels and 
+    find linked layers """
+
+    if layer == 0:
+        return base_channels, 0, []
+
+    out_channels = growth_rate
+    link = []
+    for i in range(10):
+      dv = 2 ** i
+      if layer % dv == 0: # layer is harmonic
+        k = layer - dv    # get harmonic links (n-2. n-4 ...)
+        link.append(k)
+        if i > 0:         # scale output channels for additional linked layers (low-dim compression)
+            out_channels *= growth_multiplier
+    out_channels = int(int(out_channels + 1) / 2) * 2
+
+    in_channels = 0       # count input channels for additional linked layers
+    for i in link:
+      ch,_,_ = self.get_link(i, base_channels, growth_rate, growth_multiplier)
+      in_channels += ch
+
+    return out_channels, in_channels, link
+
+  def build(self, input_shape):
+    self.links = []
+    self.layers = []
+    self._out_channels = 0
+
+    for i in range(self._n_layers):
+      out_channels, _in_channels, link = self.get_link(
+        i + 1, self._in_channels, self._growth_rate, self._growth_multiplier)
+      
+      self.links.append(link)
+      
+      self.layers += [
+        tf.keras.layers.Conv2D(
+          filters=out_channels,
+          kernel_size=3,
+          strides=1,
+          padding='same',
+          use_bias=False,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer),
+        self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon),
+        self._activation_fn 
+      ]
+
+      if (i % 2 == 0) or (i == self._n_layers - 1):
+        self._out_channels += out_channels
+    
+    super(HardBlock, self).build(input_shape)
+
+  def get_config(self):
+    config = {
+        'in_channels': self._in_channels,
+        'growth_rate': self._growth_rate,
+        'growth_multiplier': self._growth_multiplier,
+        'n_layers': self._n_layers,
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'kernel_initializer': self._kernel_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'bias_regularizer': self._bias_regularizer,
+        'activation': self._activation,
+        'use_sync_bn': self._use_sync_bn,
+        'norm_momentum': self._norm_momentum,
+        'norm_epsilon': self._norm_epsilon
+    }
+    base_config = super(HardBlock, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+  
+  def call(self, inputs, training=None):
+    layer_outputs = [inputs]    # outputs from each layer, to be extended
+
+    for i in range(self._n_layers):
+      link = self.links[i]
+      link_outputs = []         # record which linked outputs to append
+      for j in link:
+        link_outputs.append(layer_outputs[j])
+      
+      if len(link_outputs) > 1:
+        x = tf.concat(link_outputs, axis=self._bn_axis)
+      else:
+        x = link_outputs[0]
+      
+      for j in range(i*3, (i+1)*3): # conv, bn, relu
+        x = self.layers[j](x)
+      layer_outputs.append(x)
+    
+    final_output = []           # select harmonic layers
+    for i in range(len(layer_outputs)):
+      if (i % 2 == 1) or (i == len(layer_outputs) - 1):
+        final_output.append(layer_outputs[i])
+
+    return tf.concat(final_output, axis=self._bn_axis)
+  
+  def get_out_channels(self):
+    return self._out_channels
+    
