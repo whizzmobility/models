@@ -12,13 +12,6 @@ Layers and growth rates:
     Hardnet-70 is a segmentation task whereas models in paper are used for classification
     Can't seem to find any papers supporting this implementation
 
-Not implemented yet:
-New transition layer (after downsampling hardblock)
-    Current: 1x1conv, avgpoolx0.5 (densenet transition layer)
-    Paper: maxpool input, avgpoolx0.85 hardblock output, concat, 1x1conv
-        (0.85x pooling since there is already low-dimension compression, m, within hardnet)
-    Supposed outcome - Less CIO at 1x1 conv
-
 PingoLH hardblock-v2 (not pulled) includes conv with biases
 """
 
@@ -27,7 +20,6 @@ import logging
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
-from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.modeling.layers import nn_blocks
 
 layers = tf.keras.layers
@@ -138,7 +130,7 @@ class HardNet(tf.keras.Model):
                                 growth_multiplier=grmul,
                                 n_layers=n_layers)
       x = blk(x)
-      endpoints[str(i)] = x
+      endpoints[str(i)] = x # skip connections comes after hardblock, before conv2d + avgpool
 
       # Densenet transition layer! Not the mapping method shown in paper that reduces CIO @ conv
       x = layers.Conv2D(
@@ -155,6 +147,7 @@ class HardNet(tf.keras.Model):
       if i < n_blocks - 1:
         x = layers.AveragePooling2D(pool_size=(2, 2), 
                                     strides=2)(x)
+    endpoints[str(i+1)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
     for i, v in endpoints.items():

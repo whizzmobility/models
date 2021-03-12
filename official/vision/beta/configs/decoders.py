@@ -54,6 +54,12 @@ class ASPP(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class HardNet(hyperparams.Config):
+  """Hardnet config."""
+  model_id: int = 70
+
+
+@dataclasses.dataclass
 class Decoder(hyperparams.OneOfConfig):
   """Configuration for decoders.
 
@@ -66,3 +72,4 @@ class Decoder(hyperparams.OneOfConfig):
   nasfpn: NASFPN = NASFPN()
   identity: Identity = Identity()
   aspp: ASPP = ASPP()
+  hardnet: HardNet = HardNet()
