@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0,1
 
 # disable shared memory transport and force to use P2P, which is default for NCCL2.6
 # not enough memory in /dev/shm otherwise
@@ -6,19 +6,24 @@ export NCCL_SHM_DISABLE=1
 export NCCL_DEBUG=WARN
 export TF_CPP_MIN_LOG_LEVEL=INFO
 
-EXPERIMENT="seg_deeplabv3plus_scooter"
-CONFIG_FILENAME="deeplabv3plus_dilatedefficientnetb0_scooter_gpu"
-MODEL_DIR="D:/repos/data_root/${CONFIG_FILENAME}"
+TASK_TYPE="semantic_segmentation" #"image_classification"
+EXPERIMENT="seg_deeplabv3plus_scooter" #"mobilenet_imagenet"
+CONFIG_FILENAME="deeplabv3plus_dilatedefficientnetb0_scooter_gpu" #"imagenet_efficientnet_gpu"
+MODEL_DIR="/home/whizz/experiments/${CONFIG_FILENAME}"
 
 NUM_GPUS=2
-TRAIN_BATCH_SIZE=16
-INPUT_PATH="D:/data/test_data/val**"
-NUMBER_OF_IMAGES=6915
+TRAIN_BATCH_SIZE=16 #256
+INPUT_PATH="/mnt/ssd2/tfrecords/**" # ""
+NUMBER_OF_IMAGES=6915 #Ours - 6915, Imagenet - 1281167
 TRAIN_STEPS_PER_EPOCH=$((NUMBER_OF_IMAGES / TRAIN_BATCH_SIZE))
-TRAIN_STEPS=$((TRAIN_STEPS_PER_EPOCH * 2000)) # normally 500 epochs
-DECAY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 24 / 10))
-WARMUP_STEPS=$((TRAIN_STEPS_PER_EPOCH * 5))
+TRAIN_STEPS=$((TRAIN_STEPS_PER_EPOCH * 1000)) # normally 500 epochs
+DECAY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 5)) # 2.5
+WARMUP_STEPS=$((TRAIN_STEPS_PER_EPOCH * 5)) # 5
 SUMMARY_STEPS=$((TRAIN_STEPS_PER_EPOCH * 2))
+
+# 0.001 for segmentation
+# 0.008 * TRAIN_BATCH_SIZE / 128 for imagenet classification
+INITIAL_LEARNING_RATE=0.016
 
 DATA_ENGINE_FOLDER=$(dirname $(dirname $(dirname $(dirname `pwd`))))
 if [ -z "$PYTHONPATH" ]; then
@@ -40,7 +45,10 @@ PARAMS="{ \
   }, \
   trainer: { \
     optimizer_config: { \
-      learning_rate: { polynomial: {decay_steps: ${DECAY_STEPS}}}, \
+      learning_rate: { exponential: { \
+        decay_steps: ${DECAY_STEPS},
+        initial_learning_rate: ${INITIAL_LEARNING_RATE} \
+      }}, \
       warmup: {linear: {warmup_steps: ${WARMUP_STEPS}}} \
     }, \
     steps_per_loop: ${TRAIN_STEPS_PER_EPOCH}, \
