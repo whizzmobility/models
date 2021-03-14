@@ -156,7 +156,11 @@ class SemanticSegmentationTask(base_task.Task):
           rescale_predictions=not self.task_config.validation_data
           .resize_eval_groundtruth,
           dtype=tf.float32)
-
+    metrics.append(segmentation_metrics.Accuracy(
+        name='accuracy',
+        rescale_predictions=False,
+        dtype=tf.float32
+    ))
     return metrics
 
   def train_step(self, inputs, model, optimizer, metrics=None):
