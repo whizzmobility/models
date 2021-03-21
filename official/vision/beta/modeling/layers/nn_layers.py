@@ -232,7 +232,7 @@ class StochasticDepth(tf.keras.layers.Layer):
     batch_size = tf.shape(inputs)[0]
     random_tensor = keep_prob
     random_tensor += tf.random.uniform(
-        [batch_size, 1, 1, 1], dtype=inputs.dtype)
+        [batch_size] + [1] * (inputs.shape.rank - 1), dtype=inputs.dtype)
     binary_tensor = tf.floor(random_tensor)
     output = tf.math.divide(inputs, keep_prob) * binary_tensor
     return output
@@ -590,7 +590,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
       # regular global average pooling.
       # Shape: [batch_size, 1, 1, 1, channels]
       x = tf.reduce_sum(inputs, axis=(1, 2, 3), keepdims=True)
-      x = x / tf.cast(inputs.shape[2] * inputs.shape[3], x.dtype)
+      x = x / tf.cast(tf.shape(inputs)[2] * tf.shape(inputs)[3], x.dtype)
       x = x + buffer
 
       # Shape: [batch_size, 1, 1, 1, channels]
@@ -713,7 +713,7 @@ class CausalConvMixin:
     # When buffer padding, use 'valid' padding across time. The output shape
     # across time should be the input shape minus any padding, assuming
     # the stride across time is 1.
-    if self._use_buffered_input:
+    if self._use_buffered_input and spatial_output_shape[0] is not None:
       padding = self._compute_buffered_causal_padding(use_buffered_input=False)
       spatial_output_shape[0] -= sum(padding[1])
     return spatial_output_shape
