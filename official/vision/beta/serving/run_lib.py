@@ -63,7 +63,9 @@ def run_inference(image_path_glob,
     image = tf.expand_dims(image, axis=0)
     logits = inference_fn(image)
     logits = np.squeeze(logits.numpy())
-    seg_map = np.argmax(logits, axis=2).astype(np.uint8)
+    if logits.ndim > 2:
+        logits = np.argmax(logits, axis=-1).astype(np.uint8)
+    seg_map = logits
 
     if visualise:
       seg_map = CITYSCAPES_COLORMAP[seg_map]

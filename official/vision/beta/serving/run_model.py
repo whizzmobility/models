@@ -61,7 +61,7 @@ def main(_):
     raise ValueError('Export module not implemented for {} task.'.format(
         type(params.task)))
   
-  model = export_module.build_model()
+  model = export_module._build_model()
 
   ckpt = tf.train.Checkpoint(model=model)
 
@@ -71,7 +71,7 @@ def main(_):
   status = ckpt.restore(ckpt_dir_or_file).expect_partial()
 
   def inference_fn(images):
-    return export_module._run_inference_on_image_tensors(images)['predicted_masks']
+    return export_module.serve(images)['predicted_masks']
   
   run_lib.run_inference(FLAGS.image_path_glob,
                         FLAGS.output_dir,
