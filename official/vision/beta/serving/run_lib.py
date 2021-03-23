@@ -62,7 +62,9 @@ def run_inference(image_path_glob,
     
     image = tf.expand_dims(image, axis=0)
     logits = inference_fn(image)
-    logits = np.squeeze(logits.numpy())
+    if not isinstance(logits, np.ndarray):
+      logits = logits.numpy()
+    logits = np.squeeze(logits)
     if logits.ndim > 2:
         logits = np.argmax(logits, axis=-1).astype(np.uint8)
     seg_map = logits
