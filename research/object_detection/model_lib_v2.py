@@ -686,7 +686,7 @@ def train_loop(
         'steps_per_sec': np.mean(steps_per_sec_list),
         'steps_per_sec_p50': np.median(steps_per_sec_list),
         'steps_per_sec_max': max(steps_per_sec_list),
-        'last_batch_loss': loss
+        'last_batch_loss': float(loss)
     }
     mixed_precision = 'bf16' if kwargs['use_bfloat16'] else 'fp32'
     performance_summary_exporter(metrics, mixed_precision)
@@ -1084,9 +1084,9 @@ def eval_continuously(
     # model and all its variables have been properly constructed. Specifically,
     # this is currently necessary prior to (potentially) creating shadow copies
     # of the model variables for the EMA optimizer.
-    dummy_image, dummy_shapes = detection_model.preprocess(
-        tf.zeros([1, 512, 512, 3], dtype=tf.float32))
-    dummy_prediction_dict = detection_model.predict(dummy_image, dummy_shapes)
+    # dummy_image, dummy_shapes = detection_model.preprocess(
+    #    tf.zeros([1, 512, 512, 3], dtype=tf.float32))
+    # dummy_prediction_dict = detection_model.predict(dummy_image, dummy_shapes)
 
   eval_input = strategy.experimental_distribute_dataset(
       inputs.eval_input(
