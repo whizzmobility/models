@@ -13,6 +13,7 @@ flags.DEFINE_string('image_path_glob', None, 'Test image directory.')
 flags.DEFINE_string('output_dir', None, 'Output directory.')
 flags.DEFINE_boolean('visualise', None, 'Flag to visualise mask.')
 flags.DEFINE_boolean('stitch_original', None, 'Flag to stitch image at the side.')
+flags.DEFINE_boolean('save_logits_bin', None, 'Flag to save logits bin.')
 
 
 def main(_):
@@ -28,7 +29,8 @@ def main(_):
                         FLAGS.output_dir,
                         inference_fn, 
                         FLAGS.visualise, 
-                        FLAGS.stitch_original)
+                        FLAGS.stitch_original,
+                        FLAGS.save_logits_bin)
 
 
 if __name__ == '__main__':

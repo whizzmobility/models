@@ -22,6 +22,7 @@ flags.DEFINE_string('output_dir', None, 'Output directory.')
 flags.DEFINE_boolean('visualise', None, 'Flag to visualise mask.')
 flags.DEFINE_boolean('stitch_original', None, 'Flag to stitch image at the side.')
 flags.DEFINE_integer('batch_size', None, 'The batch size.')
+flags.DEFINE_boolean('save_logits_bin', None, 'Flag to save logits bin.')
 flags.DEFINE_string(
     'input_image_size', '224,224',
     'The comma-separated string of two integers representing the height,width '
@@ -77,8 +78,8 @@ def main(_):
                         FLAGS.output_dir,
                         inference_fn,
                         FLAGS.visualise,
-                        FLAGS.stitch_original)
-
+                        FLAGS.stitch_original,
+                        FLAGS.save_logits_bin)
 
 if __name__ == '__main__':
   tfm_flags.define_flags()

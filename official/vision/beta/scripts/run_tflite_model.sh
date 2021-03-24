@@ -8,4 +8,4 @@ python ../serving/run_tflite_model.py \
     --image_path_glob="${IMAGE_DIR_GLOB}" \
     --output_dir="${MODEL_DIR}/runs/tflite" \
     --visualise=1 \
-    --stitch_original=1
+    --save_logits_bin

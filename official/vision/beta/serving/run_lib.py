@@ -36,7 +36,9 @@ def run_inference(image_path_glob,
                   output_dir,
                   inference_fn,
                   visualise,
-                  stitch_original):
+                  stitch_original,
+                  save_logits_bin,
+                  preprocess_fn=None):
   """Runs inference graph for the model, for given directory of images
   
   Args:
@@ -60,15 +62,34 @@ def run_inference(image_path_glob,
     else:
         raise NotImplementedError("Unable to decode %s file type." %(image_format))
     
+    # generate save path
+    save_path = img_filename.replace(image_dir, output_dir)
+    save_dir = os.path.dirname(save_path)
+    if not os.path.exists(save_dir):
+      os.makedirs(save_dir)
+    
+    # perform pre-processing if specifiedinference and obtain segmentation map
     image = tf.expand_dims(image, axis=0)
+    if preprocess_fn:
+      image = preprocess_fn(image)
+    if save_logits_bin:
+      input_tensor_path = os.path.splitext(save_path)[0] + '_input'
+      image.numpy().flatten().astype(">f4").tofile(input_tensor_path)
+    
     logits = inference_fn(image)
     if not isinstance(logits, np.ndarray):
       logits = logits.numpy()
+    import ipdb
+    ipdb.set_trace()
+    if save_logits_bin:
+      logits_path = os.path.splitext(save_path)[0] + '_logits'
+      logits.flatten().astype(">f4").tofile(logits_path)
     logits = np.squeeze(logits)
     if logits.ndim > 2:
         logits = np.argmax(logits, axis=-1).astype(np.uint8)
     seg_map = logits
 
+    # colormap, stitch original image for comparison
     if visualise:
       seg_map = CITYSCAPES_COLORMAP[seg_map]
     if stitch_original:
@@ -77,10 +98,5 @@ def run_inference(image_path_glob,
       seg_map = np.hstack((image, seg_map))
     
     encoded_seg_map = tf.image.encode_png(seg_map)
-    save_path = img_filename.replace(image_dir, output_dir)
-    save_dir = os.path.dirname(save_path)
-    if not os.path.exists(save_dir):
-      os.makedirs(save_dir)
-    
     tf.io.write_file(save_path, encoded_seg_map)
     print("Visualised %s, saving result at %s" %(img_filename, save_path))
