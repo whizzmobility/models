@@ -84,6 +84,5 @@ class SegmentationModule(export_base.ExportModule):
 
     masks = self.inference_step(images)
     masks = tf.image.resize(masks, self._input_image_size, method='bilinear')
-    masks = tf.math.argmax(masks, -1)
 
     return dict(predicted_masks=masks)
