@@ -27,13 +27,14 @@ def main(_):
   output_details = interpreter.get_output_details()
   
   def inference_fn(image):
-    image = tf.cast(image, dtype=tf.int32)
     interpreter.set_tensor(input_details[0]['index'], image)
     interpreter.invoke()
     return interpreter.get_tensor(output_details[0]['index'])
   
   def preprocess_fn(image):
-    return tf.image.resize(image, input_details[0]['shape'][1:3])
+    image = tf.image.resize(image, input_details[0]['shape'][1:3])
+    image = tf.cast(image, dtype=tf.int32)
+    return image
 
   run_lib.run_inference(FLAGS.image_path_glob, 
                         FLAGS.output_dir,

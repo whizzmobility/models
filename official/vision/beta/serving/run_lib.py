@@ -74,13 +74,14 @@ def run_inference(image_path_glob,
       image = preprocess_fn(image)
     if save_logits_bin:
       input_tensor_path = os.path.splitext(save_path)[0] + '_input'
-      image.numpy().flatten().astype(">f4").tofile(input_tensor_path)
+      if image.dtype == tf.float32:
+        image.numpy().flatten().astype(">f4").tofile(input_tensor_path)
+      elif image.dtype == tf.int32:
+        image.numpy().flatten().astype(">i4").tofile(input_tensor_path)
     
     logits = inference_fn(image)
     if not isinstance(logits, np.ndarray):
       logits = logits.numpy()
-    import ipdb
-    ipdb.set_trace()
     if save_logits_bin:
       logits_path = os.path.splitext(save_path)[0] + '_logits'
       logits.flatten().astype(">f4").tofile(logits_path)

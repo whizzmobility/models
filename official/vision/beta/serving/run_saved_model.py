@@ -22,15 +22,18 @@ def main(_):
   model_fn = imported.signatures['serving_default']
 
   def inference_fn(image):
-    image = tf.cast(image, dtype=tf.int32)
     return model_fn(image)['predicted_masks']
+  
+  def preprocess_fn(image):
+    return tf.cast(image, dtype=tf.int32)
   
   run_lib.run_inference(FLAGS.image_path_glob, 
                         FLAGS.output_dir,
                         inference_fn, 
                         FLAGS.visualise, 
                         FLAGS.stitch_original,
-                        FLAGS.save_logits_bin)
+                        FLAGS.save_logits_bin,
+                        preprocess_fn)
 
 
 if __name__ == '__main__':
