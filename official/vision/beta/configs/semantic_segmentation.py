@@ -55,6 +55,8 @@ class DataConfig(cfg.DataConfig):
   rotate_min: float = 0.0
   rotate_max: float = 0.0
   aug_rand_hflip: bool = True
+  aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
+  randaug_magnitude: Optional[int] = 10
   drop_remainder: bool = True
   file_type: str = 'tfrecord'
 

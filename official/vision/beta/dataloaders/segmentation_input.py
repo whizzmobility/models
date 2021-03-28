@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data parser and processing for segmentation datasets."""
+from typing import Optional
 
 import tensorflow as tf
 from official.vision.beta.dataloaders import decoder
@@ -58,6 +59,8 @@ class Parser(parser.Parser):
                groundtruth_padded_size=None,
                ignore_label=255,
                aug_rand_hflip=False,
+               aug_policy: Optional[str] = None,
+               randaug_magnitude: Optional[int] = 10,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
                preserve_aspect_ratio=True,
@@ -83,6 +86,8 @@ class Parser(parser.Parser):
         and evaluation.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
+      aug_policy: `str`, augmentation policies. None or 'randaug'. TODO support 'autoaug'
+      randaug_magnitude: `int`, magnitude of the randaugment policy.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
@@ -115,6 +120,17 @@ class Parser(parser.Parser):
     self._bright_max = bright_max
     self._rotate_min = rotate_min
     self._rotate_max = rotate_max
+
+    if aug_policy:
+      # ops that changes the shape of the mask (any form of translation / rotation)
+      if aug_policy == 'randaug':
+        self._augmenter = augment.RandAugment(
+            num_layers=2, magnitude=randaug_magnitude)
+      else:
+        raise ValueError(
+            'Augmentation policy {} not supported.'.format(aug_policy))
+    else:
+      self._augmenter = None
 
     # dtype.
     self._dtype = dtype
@@ -200,6 +216,11 @@ class Parser(parser.Parser):
     label = tf.where(tf.equal(label, -1),
                      self._ignore_label * tf.ones_like(label), label)
     label = tf.squeeze(label, axis=0)
+
+    # Apply randaug
+    if self._augmenter is not None:
+      image, label = self._augmenter.distort_image_and_mask(image, label)
+
     valid_mask = tf.not_equal(label, self._ignore_label)
     labels = {
         'masks': label,
