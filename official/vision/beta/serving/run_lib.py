@@ -7,29 +7,7 @@ import numpy as np
 import tensorflow as tf
 
 from official.vision.beta.ops import preprocess_ops
-
-CITYSCAPES_COLORMAP = np.array([
-    [128, 64, 128],
-    [244, 35, 232],
-    [70, 70, 70],
-    [102, 102, 156],
-    [190, 153, 153],
-    [153, 153, 153],
-    [250, 170, 30],
-    [220, 220, 0],
-    [107, 142, 35],
-    [152, 251, 152],
-    [0, 130, 180],
-    [220, 20, 60],
-    [255, 0, 0],
-    [0, 0, 142],
-    [0, 0, 70],
-    [0, 60, 100],
-    [0, 80, 100],
-    [0, 0, 230],
-    [119, 11, 32],
-    [255, 255, 255]
-], dtype=np.uint8)
+from official.vision.beta.ops.colormaps import get_colormap
 
 
 def run_inference(image_path_glob,
@@ -51,6 +29,7 @@ def run_inference(image_path_glob,
 
   img_filenames = [f for f in glob.glob(image_path_glob, recursive=True)]
   image_dir = image_path_glob.split("*")[0].strip(os.sep).strip('/')
+  cmap = get_colormap(cmap_type='cityscapes').numpy()
 
   for img_filename in img_filenames:
     image = tf.io.read_file(img_filename)
@@ -92,7 +71,7 @@ def run_inference(image_path_glob,
 
     # colormap, stitch original image for comparison
     if visualise:
-      seg_map = CITYSCAPES_COLORMAP[seg_map]
+      seg_map = cmap[seg_map]
     if stitch_original:
       image = tf.image.resize(image, seg_map.shape[:2])
       image = np.squeeze(image.numpy()).astype(np.uint8)

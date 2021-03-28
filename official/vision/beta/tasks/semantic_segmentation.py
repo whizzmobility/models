@@ -27,11 +27,20 @@ from official.vision.beta.dataloaders import tfds_segmentation_decoders
 from official.vision.beta.evaluation import segmentation_metrics
 from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.modeling import factory
+from official.vision.beta.ops.colormaps import get_colormap
+from orbit.utils import SummaryManager
 
 
 @task_factory.register_task_cls(exp_cfg.SemanticSegmentationTask)
 class SemanticSegmentationTask(base_task.Task):
   """A task for semantic segmentation."""
+
+  def __init__(self, params, logging_dir: str = None, name: str = None):
+    super().__init__(params, logging_dir, name)
+    self.image_summary_manager = SummaryManager(
+      self.logging_dir, tf.summary.image)
+    self.cmap = get_colormap(cmap_type='cityscapes', 
+                             ignore_label=self.task_config.losses.ignore_label)
 
   def build_model(self):
     """Builds segmentation model."""
@@ -183,6 +192,11 @@ class SemanticSegmentationTask(base_task.Task):
       features = strategy.experimental_split_to_logical_devices(
           features, input_partition_dims)
 
+    self.image_summary_manager.write_summaries({
+      'input_images': features,
+      'labels': tf.gather(self.cmap, tf.cast(tf.squeeze(labels['masks']), tf.int32))
+    })
+    
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
