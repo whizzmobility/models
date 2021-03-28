@@ -160,6 +160,7 @@ class _AsyncTrainer(orbit.StandardTrainer, orbit.StandardEvaluator):
 
 def get_runtime_options(config: ExperimentConfig):
   """Get tf.distribute.RunOptions from config."""
+  if not hasattr(tf.tpu, 'XLAOptions'): return None
   xla_options = {}
   if config.runtime.tpu_enable_xla_dynamic_padder is not None:
     xla_options["enable_xla_dynamic_padder"] = (
