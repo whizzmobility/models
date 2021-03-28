@@ -49,6 +49,11 @@ class DataConfig(cfg.DataConfig):
   groundtruth_padded_size: List[int] = dataclasses.field(default_factory=list)
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
+  preserve_aspect_ratio: bool = True
+  bright_min: float = 1.0
+  bright_max: float = 1.0
+  rotate_min: float = 0.0
+  rotate_max: float = 0.0
   aug_rand_hflip: bool = True
   drop_remainder: bool = True
   file_type: str = 'tfrecord'

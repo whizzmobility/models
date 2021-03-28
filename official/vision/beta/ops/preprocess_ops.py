@@ -15,8 +15,10 @@
 """Preprocessing ops."""
 
 import math
+from random import random
 from six.moves import range
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from official.vision.beta.ops import box_ops
 
@@ -113,7 +115,8 @@ def resize_and_crop_image(image,
                           aug_scale_min=1.0,
                           aug_scale_max=1.0,
                           seed=1,
-                          method=tf.image.ResizeMethod.BILINEAR):
+                          method=tf.image.ResizeMethod.BILINEAR,
+                          preserve_aspect_ratio=True):
   """Resizes the input image to output size (RetinaNet style).
 
   Resize and pad images given the desired output size of the image and
@@ -162,9 +165,10 @@ def resize_and_crop_image(image,
     else:
       scaled_size = desired_size
 
-    scale = tf.minimum(
-        scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
-    scaled_size = tf.round(image_size * scale)
+    if preserve_aspect_ratio:
+      scale = tf.minimum(
+          scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
+      scaled_size = tf.round(image_size * scale)
 
     # Computes 2D image_scale.
     image_scale = scaled_size / image_size
@@ -555,3 +559,48 @@ def random_horizontal_flip(image, normalized_boxes=None, masks=None, seed=1):
           lambda: masks)
 
     return image, normalized_boxes, masks
+
+
+def random_brightness(image,
+                      bright_max,
+                      bright_min,
+                      seed=1):
+  """Randomly modifies brightness of image between bright_max and bright_min."""
+  with tf.name_scope('random_brightness'):
+    if bright_min == 0: return image
+    brightness_level = tf.random.uniform(
+      bright_min, bright_max, seed=seed)
+    return tf.image.adjust_brightness(image, brightness_level)
+
+
+def random_rotation(image,
+                    masks,
+                    rotate_max,
+                    rotate_min,
+                    ignore_label=255,
+                    seed=1):
+  """ Randomly rotate image between rotate_max and rotate_min radians 
+  
+  Args:
+    masks: `Tensor` of shape [N, H, W, 1] representing ground truth masks.
+  """
+  with tf.name_scope('random_rotation'):
+    if rotate_min == 0: return image
+    rotation_deg = tf.random.uniform(
+      [], rotate_min, rotate_max, seed=seed)
+    
+    image = tfa.image.rotate(
+      images=image,
+      angles=rotation_deg,
+      interpolation='nearest',
+      fill_mode='constant',
+      fill_value=0
+    )
+    masks = tfa.image.rotate(
+      images=masks,
+      angles=rotation_deg,
+      interpolation='nearest',
+      fill_mode='constant',
+      fill_value=ignore_label
+    )
+    return image, masks

@@ -60,6 +60,11 @@ class Parser(parser.Parser):
                aug_rand_hflip=False,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
+               preserve_aspect_ratio=True,
+               rotate_min=0.0,
+               rotate_max=0.0,
+               bright_min=1.0,
+               bright_max=1.0,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -82,6 +87,14 @@ class Parser(parser.Parser):
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
         data augmentation during training.
+      rotate_min: `float`, the minimum rotation applied to `output_size` for
+        data augmentation during training.
+      rotate_max: `float`, the maximum rotation applied to `output_size` for
+        data augmentation during training.
+      bright_min: `float`, the minimum brightness applied to `output_size` for
+        data augmentation during training.
+      bright_max: `float`, the maximum brightness applied to `output_size` for
+        data augmentation during training.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
     self._output_size = output_size
@@ -97,6 +110,11 @@ class Parser(parser.Parser):
     self._aug_rand_hflip = aug_rand_hflip
     self._aug_scale_min = aug_scale_min
     self._aug_scale_max = aug_scale_max
+    self._preserve_aspect_ratio = preserve_aspect_ratio
+    self._bright_min = bright_min
+    self._bright_max = bright_max
+    self._rotate_min = rotate_min
+    self._rotate_max = rotate_max
 
     # dtype.
     self._dtype = dtype
@@ -139,13 +157,34 @@ class Parser(parser.Parser):
       image, _, label = preprocess_ops.random_horizontal_flip(
           image, masks=label)
 
+    # Rotates image randomly during training
+    if self._rotate_min != 0.0 and \
+      self._rotate_max != 0.0 and \
+      self._rotate_min < self._rotate_max:
+      image, label = preprocess_ops.random_rotation(
+        image, masks=label, 
+        rotate_max=self._rotate_max, 
+        rotate_min=self._rotate_min,
+        ignore_label=self._ignore_label
+      )
+
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
         image,
         self._output_size,
         self._output_size,
         aug_scale_min=self._aug_scale_min,
-        aug_scale_max=self._aug_scale_max)
+        aug_scale_max=self._aug_scale_max,
+        preserve_aspect_ratio=self._preserve_aspect_ratio)
+    
+    # Modify brightness randomly during training
+    if self._bright_min != 1.0 and \
+      self._bright_max != 1.0 and \
+      self._bright_min < self._bright_max:
+      image = preprocess_ops.random_brightness(
+        image, 
+        bright_min=self._bright_min, 
+        bright_max=self._bright_max)
 
     # Resizes and crops boxes.
     image_scale = image_info[2, :]
@@ -182,7 +221,7 @@ class Parser(parser.Parser):
 
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
-        image, self._output_size, self._output_size)
+        image, self._output_size, self._output_size, self._preserve_aspect_ratio)
 
     if self._resize_eval_groundtruth:
       # Resizes eval masks to match input image sizes. In that case, mean IoU
