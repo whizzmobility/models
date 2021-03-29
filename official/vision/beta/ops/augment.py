@@ -551,7 +551,7 @@ def unwrap(image: tf.Tensor, replace: int) -> tf.Tensor:
   flattened_image = tf.reshape(image, [-1, image_shape[2]])
 
   # Find all pixels where the last channel is zero.
-  alpha_channel = tf.expand_dims(flattened_image[:, 3], axis=-1)
+  alpha_channel = tf.expand_dims(flattened_image[:, -1], axis=-1)
 
   replace = tf.concat([replace, tf.ones([1], image.dtype)], 0)
 
@@ -562,7 +562,7 @@ def unwrap(image: tf.Tensor, replace: int) -> tf.Tensor:
       flattened_image)
 
   image = tf.reshape(flattened_image, image_shape)
-  image = tf.slice(image, [0, 0, 0], [image_shape[0], image_shape[1], 3])
+  image = tf.slice(image, [0, 0, 0], [image_shape[0], image_shape[1], image_shape[2]-1])
   return image
 
 
@@ -1155,7 +1155,8 @@ class RandAugment(ImageAugment):
 
   def distort_image_and_mask(self, 
                              image: tf.Tensor, 
-                             mask: tf.Tensor) -> (tf.Tensor, tf.Tensor):
+                             mask: tf.Tensor,
+                             ignore_label: int) -> (tf.Tensor, tf.Tensor):
     """Applies the RandAugment policy to `image` and `mask`.
 
     Args:
@@ -1166,12 +1167,14 @@ class RandAugment(ImageAugment):
       The augmented version of `image`, The augmented version of `mask`
     """
     input_image_type = image.dtype
+    input_mask_type = mask.dtype
 
     if input_image_type != tf.uint8:
       image = tf.clip_by_value(image, 0.0, 255.0)
       image = tf.cast(image, dtype=tf.uint8)
 
     replace_value = [128] * 3
+    mask_replace_value = [ignore_label]
     min_prob, max_prob = 0.2, 0.8
 
     for _ in range(self.num_layers):
@@ -1188,24 +1191,27 @@ class RandAugment(ImageAugment):
         func, _, args = _parse_policy_info(op_name, prob, self.magnitude,
                                            replace_value, self.cutout_const,
                                            self.translate_const)
+        mask_func, _, mask_args = _parse_policy_info(
+          op_name, prob, self.magnitude,
+          mask_replace_value, self.cutout_const,
+          self.translate_const)
         
         if op_name in self.mask_available_ops:
           branch_fn = (i,
               # pylint:disable=g-long-lambda
-              lambda selected_func=func, selected_args=args: selected_func(
-                  image, *selected_args), selected_func(mask, *selected_args))
+              lambda func=func, args=args, mask_func=mask_func, mask_args=mask_args: (func(
+                  image, *args), mask_func(mask, *mask_args)))
+              # pylint:enable=g-long-lambda
         else:
           branch_fn = (i,
-              # pylint:disable=g-long-lambda
-              lambda selected_func=func, selected_args=args: selected_func(
-                  image, *selected_args), mask)
+              lambda func=func, args=args: (func(image, *args), mask))
         branch_fns.append(branch_fn)
-        # pylint:enable=g-long-lambda
 
-      image = tf.switch_case(
+      image, mask = tf.switch_case(
           branch_index=op_to_select,
           branch_fns=branch_fns,
-          default=lambda: tf.identity(image))
+          default=lambda: (tf.identity(image), tf.identity(mask)))
 
     image = tf.cast(image, dtype=input_image_type)
+    mask = tf.cast(mask, dtype=input_mask_type)
     return image, mask

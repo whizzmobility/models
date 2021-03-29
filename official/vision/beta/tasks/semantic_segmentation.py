@@ -111,6 +111,13 @@ class SemanticSegmentationTask(base_task.Task):
         aug_scale_min=params.aug_scale_min,
         aug_scale_max=params.aug_scale_max,
         aug_rand_hflip=params.aug_rand_hflip,
+        aug_policy=params.aug_policy,
+        randaug_magnitude=params.randaug_magnitude,
+        preserve_aspect_ratio=params.preserve_aspect_ratio,
+        rotate_min=params.rotate_min,
+        rotate_max=params.rotate_max,
+        bright_min=params.bright_min,
+        bright_max=params.bright_max,
         dtype=params.dtype)
 
     reader = input_reader_factory.input_reader_generator(

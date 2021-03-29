@@ -45,8 +45,8 @@ task:
     bright_max: 1.0
     rotate_min: 0.0 # in radians
     rotate_max: 0.0
-    aug_policy: null
-    randaug_magnitude: 10
+    aug_policy: randaug
+    randaug_magnitude: 5 # 5-10 for image classification
   validation_data:
     output_size: [256, 256] ### [1024, 2048]
     input_path: 'D:/data/test_data/val**'

@@ -18,7 +18,7 @@ from typing import Optional
 import tensorflow as tf
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
-from official.vision.beta.ops import preprocess_ops
+from official.vision.beta.ops import preprocess_ops, augment
 
 import io
 from PIL import Image
@@ -219,7 +219,8 @@ class Parser(parser.Parser):
 
     # Apply randaug
     if self._augmenter is not None:
-      image, label = self._augmenter.distort_image_and_mask(image, label)
+      image, label = self._augmenter.distort_image_and_mask(
+        image, label, self._ignore_label)
 
     valid_mask = tf.not_equal(label, self._ignore_label)
     labels = {
