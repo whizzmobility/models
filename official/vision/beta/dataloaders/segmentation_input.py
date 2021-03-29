@@ -136,7 +136,7 @@ class Parser(parser.Parser):
     self._dtype = dtype
 
   def _prepare_image_and_label(self, data):
-    """Prepare normalized image and label."""
+    """Prepare image and label."""
     image = tf.io.decode_image(data['image/encoded'], channels=3)
     label = tf.io.decode_image(data['image/segmentation/class/encoded'],
                                channels=1)
@@ -152,8 +152,7 @@ class Parser(parser.Parser):
 
     label = tf.reshape(label, (1, height, width))
     label = tf.cast(label, tf.float32)
-    # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image)
+    
     return image, label
 
   def _parse_train_data(self, data):
@@ -228,6 +227,10 @@ class Parser(parser.Parser):
         'valid_masks': valid_mask,
         'image_info': image_info,
     }
+    
+    # Normalizes image with mean and std pixel values. 
+    # Must be done after augmenter since certain ops rely on uint8
+    image = preprocess_ops.normalize_image(image)
 
     # Cast image as self._dtype
     image = tf.cast(image, dtype=self._dtype)
@@ -269,6 +272,10 @@ class Parser(parser.Parser):
         'image_info': image_info
     }
 
+    # Normalizes image with mean and std pixel values.
+    # Must be done after augmenter since certain ops rely on uint8
+    image = preprocess_ops.normalize_image(image)
+    
     # Cast image as self._dtype
     image = tf.cast(image, dtype=self._dtype)
 
