@@ -1173,8 +1173,12 @@ class RandAugment(ImageAugment):
       image = tf.clip_by_value(image, 0.0, 255.0)
       image = tf.cast(image, dtype=tf.uint8)
 
+    # concat mask till it gets 3 channels for compatability with transform ops
+    extended_channel = tf.ones([mask.shape[0], mask.shape[1], 2], mask.dtype)
+    mask = tf.concat([mask, extended_channel], axis=2)
+      
     replace_value = [128] * 3
-    mask_replace_value = [ignore_label]
+    mask_replace_value = [ignore_label] * 3
     min_prob, max_prob = 0.2, 0.8
 
     for _ in range(self.num_layers):
@@ -1191,16 +1195,17 @@ class RandAugment(ImageAugment):
         func, _, args = _parse_policy_info(op_name, prob, self.magnitude,
                                            replace_value, self.cutout_const,
                                            self.translate_const)
-        mask_func, _, mask_args = _parse_policy_info(
-          op_name, prob, self.magnitude,
-          mask_replace_value, self.cutout_const,
-          self.translate_const)
+        mask_args = args
+        if op_name in REPLACE_FUNCS:
+          mask_args = list(mask_args)
+          mask_args[-1] = mask_replace_value
+          mask_args = tuple(mask_args)
         
         if op_name in self.mask_available_ops:
           branch_fn = (i,
               # pylint:disable=g-long-lambda
-              lambda func=func, args=args, mask_func=mask_func, mask_args=mask_args: (func(
-                  image, *args), mask_func(mask, *mask_args)))
+              lambda func=func, args=args, mask_args=mask_args: (func(
+                  image, *args), func(mask, *mask_args)))
               # pylint:enable=g-long-lambda
         else:
           branch_fn = (i,
@@ -1213,5 +1218,6 @@ class RandAugment(ImageAugment):
           default=lambda: (tf.identity(image), tf.identity(mask)))
 
     image = tf.cast(image, dtype=input_image_type)
+    mask = tf.slice(mask, [0, 0, 0], [mask.shape[0], mask.shape[1], 1])
     mask = tf.cast(mask, dtype=input_mask_type)
     return image, mask

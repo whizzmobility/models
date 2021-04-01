@@ -23,6 +23,9 @@ from official.vision.beta.ops import preprocess_ops, augment
 import io
 from PIL import Image
 
+MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
+STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
+
 
 def _encode_image(image_array, fmt):
   image = Image.fromarray(image_array)
@@ -230,7 +233,9 @@ class Parser(parser.Parser):
     
     # Normalizes image with mean and std pixel values. 
     # Must be done after augmenter since certain ops rely on uint8
-    image = preprocess_ops.normalize_image(image)
+    image = preprocess_ops.normalize_image(image,
+                                           offset=MEAN_RGB,
+                                           scale=STDDEV_RGB)
 
     # Cast image as self._dtype
     image = tf.cast(image, dtype=self._dtype)
@@ -274,7 +279,9 @@ class Parser(parser.Parser):
 
     # Normalizes image with mean and std pixel values.
     # Must be done after augmenter since certain ops rely on uint8
-    image = preprocess_ops.normalize_image(image)
+    image = preprocess_ops.normalize_image(image,
+                                           offset=MEAN_RGB,
+                                           scale=STDDEV_RGB)
     
     # Cast image as self._dtype
     image = tf.cast(image, dtype=self._dtype)
