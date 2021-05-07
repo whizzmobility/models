@@ -308,7 +308,6 @@ class BottleneckBlock(tf.keras.layers.Layer):
       self._bn_axis = -1
     else:
       self._bn_axis = 1
-    self._activation_fn = tf_utils.get_activation(activation)
 
   def build(self, input_shape):
     if self._use_projection:
@@ -350,6 +349,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
+    self._activation1 = tf_utils.get_activation(
+        self._activation, use_keras_layer=True)
 
     self._conv2 = tf.keras.layers.Conv2D(
         filters=self._filters,
@@ -365,6 +366,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
+    self._activation2 = tf_utils.get_activation(
+        self._activation, use_keras_layer=True)
 
     self._conv3 = tf.keras.layers.Conv2D(
         filters=self._filters * 4,
@@ -378,6 +381,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
         axis=self._bn_axis,
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
+    self._activation3 = tf_utils.get_activation(
+        self._activation, use_keras_layer=True)
 
     if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
       self._squeeze_excitation = nn_layers.SqueezeExcitation(
@@ -395,6 +400,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
           self._stochastic_depth_drop_rate)
     else:
       self._stochastic_depth = None
+    self._add = tf.keras.layers.Add()
 
     super(BottleneckBlock, self).build(input_shape)
 
@@ -430,11 +436,11 @@ class BottleneckBlock(tf.keras.layers.Layer):
 
     x = self._conv1(inputs)
     x = self._norm1(x)
-    x = self._activation_fn(x)
+    x = self._activation1(x)
 
     x = self._conv2(x)
     x = self._norm2(x)
-    x = self._activation_fn(x)
+    x = self._activation2(x)
 
     x = self._conv3(x)
     x = self._norm3(x)
@@ -445,7 +451,8 @@ class BottleneckBlock(tf.keras.layers.Layer):
     if self._stochastic_depth:
       x = self._stochastic_depth(x, training=training)
 
-    return self._activation_fn(x + shortcut)
+    x = self._add([x, shortcut])
+    return self._activation3(x)
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -557,11 +564,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       self._bn_axis = -1
     else:
       self._bn_axis = 1
-    self._activation_fn = tf_utils.get_activation(activation)
     if not depthwise_activation:
       self._depthwise_activation = activation
-    self._depthwise_activation_fn = tf_utils.get_activation(
-        self._depthwise_activation)
     if regularize_depthwise:
       self._depthsize_regularizer = kernel_regularizer
     else:
@@ -590,6 +594,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
+      self._activation_layer = tf_utils.get_activation(
+          self._activation, use_keras_layer=True)
 
     if self._use_depthwise:
       # Depthwise conv.
@@ -607,6 +613,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
+      self._depthwise_activation_layer = tf_utils.get_activation(
+          self._depthwise_activation, use_keras_layer=True)
 
     # Squeeze and excitation.
     if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
@@ -647,6 +655,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           self._stochastic_depth_drop_rate)
     else:
       self._stochastic_depth = None
+    self._add = tf.keras.layers.Add()
 
     super(InvertedBottleneckBlock, self).build(input_shape)
 
@@ -684,14 +693,14 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     if self._expand_ratio > 1:
       x = self._conv0(inputs)
       x = self._norm0(x)
-      x = self._activation_fn(x)
+      x = self._activation_layer(x)
     else:
       x = inputs
 
     if self._use_depthwise:
       x = self._conv1(x)
       x = self._norm1(x)
-      x = self._depthwise_activation_fn(x)
+      x = self._depthwise_activation_layer(x)
 
     if self._squeeze_excitation:
       x = self._squeeze_excitation(x)
@@ -704,7 +713,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         self._strides == 1):
       if self._stochastic_depth:
         x = self._stochastic_depth(x, training=training)
-      x = tf.add(x, shortcut)
+      x = self._add([x, shortcut])
 
     return x
 
