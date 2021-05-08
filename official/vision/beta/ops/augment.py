@@ -1180,7 +1180,8 @@ class RandAugment(ImageAugment):
                num_layers: int = 2,
                magnitude: float = 10.,
                cutout_const: float = 40.,
-               translate_const: float = 100.):
+               translate_const: float = 100.,
+               available_ops: List[str] = None):
     """Applies the RandAugment policy to images.
 
     Args:
@@ -1199,13 +1200,21 @@ class RandAugment(ImageAugment):
     self.magnitude = float(magnitude)
     self.cutout_const = float(cutout_const)
     self.translate_const = float(translate_const)
-    self.available_ops = [
-        'AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize',
-        'Color', 'Contrast', 'Brightness', 'Sharpness', 'ShearX', 'ShearY',
-        'TranslateX', 'TranslateY', 'Cutout', 'SolarizeAdd'
+    if available_ops is None:
+      self.available_ops = [
+          'AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize',
+          'Color', 'Contrast', 'Brightness', 'Sharpness', 'ShearX', 'ShearY',
+          'TranslateX', 'TranslateY', 'Cutout', 'SolarizeAdd'
+      ]
+    else:
+      self.available_ops = available_ops
+    self.mask_available_ops = [i for i in 
+      ['Rotate', 'ShearX', 'ShearY', 'TranslateX', 'TranslateY']
+      if i in available_ops
     ]
-    self.mask_available_ops = [
-        'Rotate', 'ShearX', 'ShearY', 'TranslateX', 'TranslateY']
+    print(self.available_ops)
+    print(self.mask_available_ops)
+    
 
   def distort(self, image: tf.Tensor) -> tf.Tensor:
     """Applies the RandAugment policy to `image`.

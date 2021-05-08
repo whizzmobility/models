@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Data parser and processing for segmentation datasets."""
-from typing import Optional
+from typing import Optional, List
 
 import tensorflow as tf
 from official.vision.beta.dataloaders import decoder
@@ -64,6 +64,7 @@ class Parser(parser.Parser):
                aug_rand_hflip=False,
                aug_policy: Optional[str] = None,
                randaug_magnitude: Optional[int] = 10,
+               randaug_available_ops: Optional[List[str]] = None,
                aug_scale_min=1.0,
                aug_scale_max=1.0,
                preserve_aspect_ratio=True,
@@ -92,6 +93,7 @@ class Parser(parser.Parser):
         horizontal flip.
       aug_policy: `str`, augmentation policies. None or 'randaug'. TODO support 'autoaug'
       randaug_magnitude: `int`, magnitude of the randaugment policy.
+      randaug_available_ops: `List[str]`, specify augmentations for randaug
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
@@ -129,7 +131,7 @@ class Parser(parser.Parser):
       # ops that changes the shape of the mask (any form of translation / rotation)
       if aug_policy == 'randaug':
         self._augmenter = augment.RandAugment(
-            num_layers=2, magnitude=randaug_magnitude)
+            num_layers=2, magnitude=randaug_magnitude, available_ops=randaug_available_ops)
       else:
         raise ValueError(
             'Augmentation policy {} not supported.'.format(aug_policy))

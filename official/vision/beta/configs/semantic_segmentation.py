@@ -57,6 +57,7 @@ class DataConfig(cfg.DataConfig):
   aug_rand_hflip: bool = True
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
   randaug_magnitude: Optional[int] = 10
+  randaug_available_ops: Optional[List[str]] = 10
   drop_remainder: bool = True
   file_type: str = 'tfrecord'
 

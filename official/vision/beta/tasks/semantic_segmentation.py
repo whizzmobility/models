@@ -115,6 +115,7 @@ class SemanticSegmentationTask(base_task.Task):
         aug_rand_hflip=params.aug_rand_hflip,
         aug_policy=params.aug_policy,
         randaug_magnitude=params.randaug_magnitude,
+        randaug_available_ops=params.randaug_available_ops,
         preserve_aspect_ratio=params.preserve_aspect_ratio,
         rotate_min=params.rotate_min,
         rotate_max=params.rotate_max,
