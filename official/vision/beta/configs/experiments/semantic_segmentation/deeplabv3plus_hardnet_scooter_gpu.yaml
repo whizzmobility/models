@@ -30,6 +30,7 @@ task:
     l2_weight_decay: 0.0001 ###
     ignore_label: 250 ###
     top_k_percent_pixels: 0.3  # only backpropagate loss for the topk 100% pixels.
+    class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
   train_data:
     output_size: [256, 256] ### [512, 1024]
     train_on_crops: false
@@ -47,6 +48,7 @@ task:
     rotate_max: 0.0
     aug_policy: randaug
     randaug_magnitude: 5 # 5-10 for image classification
+    randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
   validation_data:
     output_size: [256, 256] ### [1024, 2048]
     input_path: 'D:/data/test_data/val**'
@@ -55,6 +57,8 @@ task:
     dtype: 'float32'
     drop_remainder: false
     resize_eval_groundtruth: true
+  init_checkpoint: '/home/whizz/experiments/imagenet/imagenet_hardnet_gpu_224x224_fixedconfig/ckpt-2647116'
+  init_checkpoint_modules: 'backbone'
 trainer:
   optimizer_config:
     learning_rate:

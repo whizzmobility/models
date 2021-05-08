@@ -10,5 +10,5 @@ python ../train.py \
     --experiment="${EXPERIMENT}" \
     --mode="continuous_eval" \
     --model_dir="${MODEL_DIR}" \
-    --config_file="../configs/experiments/semantic_segmentation/${CONFIG_FILENAME}.yaml" \
+    --config_file="../configs/experiments/${TASK_TYPE}/${CONFIG_FILENAME}.yaml" \
     --params_override="${PARAMS}"
