@@ -44,12 +44,13 @@ def build_classification_model(
     l2_regularizer: tf.keras.regularizers.Regularizer = None,
     skip_logits_layer: bool = False) -> tf.keras.Model:
   """Builds the classification model."""
+  norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
-      model_config=model_config,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
 
-  norm_activation_config = model_config.norm_activation
   model = classification_model.ClassificationModel(
       backbone=backbone,
       num_classes=model_config.num_classes,
@@ -69,10 +70,13 @@ def build_maskrcnn(
     model_config: maskrcnn_cfg.MaskRCNN,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds Mask R-CNN model."""
+  norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
-      model_config=model_config,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
+  backbone(tf.keras.Input(input_specs.shape[1:]))
 
   decoder = decoder_factory.build_decoder(
       input_specs=backbone.output_specs,
@@ -85,7 +89,6 @@ def build_maskrcnn(
   roi_aligner_config = model_config.roi_aligner
   detection_head_config = model_config.detection_head
   generator_config = model_config.detection_generator
-  norm_activation_config = model_config.norm_activation
   num_anchors_per_location = (
       len(model_config.anchor.aspect_ratios) * model_config.anchor.num_scales)
 
@@ -242,10 +245,13 @@ def build_retinanet(
     model_config: retinanet_cfg.RetinaNet,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds RetinaNet model."""
+  norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
-      model_config=model_config,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
+  backbone(tf.keras.Input(input_specs.shape[1:]))
 
   decoder = decoder_factory.build_decoder(
       input_specs=backbone.output_specs,
@@ -254,7 +260,6 @@ def build_retinanet(
 
   head_config = model_config.head
   generator_config = model_config.detection_generator
-  norm_activation_config = model_config.norm_activation
   num_anchors_per_location = (
       len(model_config.anchor.aspect_ratios) * model_config.anchor.num_scales)
 
@@ -301,9 +306,11 @@ def build_segmentation_model(
     model_config: segmentation_cfg.SemanticSegmentationModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds Segmentation model."""
+  norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
-      model_config=model_config,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
 
   decoder = decoder_factory.build_decoder(
@@ -312,7 +319,6 @@ def build_segmentation_model(
       l2_regularizer=l2_regularizer)
 
   head_config = model_config.head
-  norm_activation_config = model_config.norm_activation
 
   head = segmentation_heads.SegmentationHead(
       num_classes=model_config.num_classes,
