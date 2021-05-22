@@ -62,15 +62,22 @@ def run_experiment(
         otherwise, returns {}.
   """
 
-  with distribution_strategy.scope():
-    if not trainer:
+  if 'train' in mode:
+    with distribution_strategy.scope():
       trainer = train_utils.create_trainer(
           params,
           task,
           train='train' in mode,
           evaluate=('eval' in mode) or run_post_eval,
-          checkpoint_exporter=maybe_create_best_ckpt_exporter(
-              params, model_dir))
+          checkpoint_exporter=maybe_create_best_ckpt_exporter(params, model_dir))
+  else:
+    trainer = train_utils.create_trainer(
+        params,
+        task,
+        train='train' in mode,
+        evaluate=('eval' in mode) or run_post_eval,
+        checkpoint_exporter=maybe_create_best_ckpt_exporter(
+            params, model_dir))
 
   if trainer.checkpoint:
     checkpoint_manager = tf.train.CheckpointManager(
