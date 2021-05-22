@@ -1,12 +1,12 @@
 # MobileNetV2_1.0 ImageNet classification. 71.0% top-1 and 90.0% top-5 accuracy.
 runtime:
   distribution_strategy: 'mirrored'
-  mixed_precision_dtype: 'float16'
+  # mixed_precision_dtype: 'float16'
   loss_scale: 'dynamic'
 task:
   model:
     num_classes: 1001
-    input_size: [224, 224, 3]
+    input_size: [256, 256, 3]
     backbone:
       type: 'efficientnet'
       efficientnet:

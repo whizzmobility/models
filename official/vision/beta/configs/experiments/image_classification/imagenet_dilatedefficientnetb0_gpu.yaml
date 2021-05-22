@@ -3,10 +3,11 @@
 runtime:
   distribution_strategy: 'mirrored'
   # mixed_precision_dtype: 'float32'
+  loss_scale: 'dynamic'
   num_gpus: 3
 task:
   model:
-    num_classes: 19
+    num_classes: 1001
     input_size: [256, 256, 3]
     backbone:
       type: 'dilated_efficientnet'
@@ -17,52 +18,35 @@ task:
         se_ratio: 0.0
         stochastic_depth_drop_rate: 0.2
         # multigrid: [1, 2, 4]
-    decoder:
-      aspp:
-        level: 5 # ln(output_stride)/ln(2)
-        dilation_rates: [6, 12, 18] ###
-        ### pool_kernel_size: [512, 1024]
-    head:
-      level: 5
-      num_convs: 2
-      feature_fusion: 'deeplabv3plus'
-      low_level: 2
-      low_level_num_filters: 48
+    dropout_rate: 0.2
     norm_activation:
       activation: 'relu'
       norm_epsilon: 0.001
       norm_momentum: 0.99
       use_sync_bn: true
   losses:
-    l2_weight_decay: 0.0001 ###
-    ignore_label: 250 ###
-    top_k_percent_pixels: 0.3  # only backpropagate loss for the topk 100% pixels.
-    class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    l2_weight_decay: 0.00001
+    one_hot: true
+    label_smoothing: 0.1
   train_data:
-    output_size: [256, 256] ### [512, 1024]
-    input_path: 'D:/data/test_data/val**'
+    input_path: ''
+    tfds_data_dir: '/home/whizz/data'
+    tfds_name: 'imagenet2012'
+    tfds_split: 'train'
+    sharding: true
     is_training: true
-    global_batch_size: 16
-    dtype: 'float32'
-    aug_rand_hflip: true
-    aug_scale_max: 2.0
-    aug_scale_min: 0.5
-    preserve_aspect_ratio: false
-    bright_min: 1.0
-    bright_max: 1.0
-    rotate_min: 0.0 # in radians
-    rotate_max: 0.0
-    aug_policy: randaug
-    randaug_magnitude: 5 # 5-10 for image classification
-    randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
+    global_batch_size: 1024  # 128 * 8
+    dtype: 'float16'
   validation_data:
-    output_size: [256, 256] ### [1024, 2048]
-    input_path: 'D:/data/test_data/val**'
-    is_training: false
-    global_batch_size: 1 ### 16
-    dtype: 'float32'
+    input_path: ''
+    tfds_data_dir: '/home/whizz/data'
+    tfds_name: 'imagenet2012'
+    tfds_split: 'validation'
+    sharding: true
+    is_training: true
+    global_batch_size: 1024  # 128 * 8
+    dtype: 'float16'
     drop_remainder: false
-    resize_eval_groundtruth: true
 trainer:
   optimizer_config:
     learning_rate:

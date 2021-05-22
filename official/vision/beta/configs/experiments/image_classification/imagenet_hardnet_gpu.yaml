@@ -30,6 +30,9 @@ task:
     is_training: true
     global_batch_size: 1024  # 128 * 8
     dtype: 'float16'
+    aug_policy: randaug
+    randaug_magnitude: 5 # 5-10 for image classification
+    # randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
   validation_data:
     input_path: ''
     tfds_data_dir: '/home/whizz/data'

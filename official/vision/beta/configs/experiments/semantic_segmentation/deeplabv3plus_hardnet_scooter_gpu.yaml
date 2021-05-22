@@ -33,7 +33,6 @@ task:
     class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
   train_data:
     output_size: [256, 256] ### [512, 1024]
-    train_on_crops: false
     input_path: 'D:/data/test_data/val**'
     is_training: true
     global_batch_size: 12 ### 16
@@ -57,7 +56,7 @@ task:
     dtype: 'float32'
     drop_remainder: false
     resize_eval_groundtruth: true
-  init_checkpoint: '/home/whizz/experiments/imagenet/imagenet_hardnet_gpu_224x224_fixedconfig/ckpt-2647116'
+  init_checkpoint: '/home/whizz/experiments/imagenet/imagenet_hardnet_gpu_256x256_randaug/ckpt-2502000'
   init_checkpoint_modules: 'backbone'
 trainer:
   optimizer_config:
