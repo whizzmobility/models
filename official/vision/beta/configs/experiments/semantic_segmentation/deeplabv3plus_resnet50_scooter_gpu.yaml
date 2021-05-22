@@ -39,7 +39,6 @@ task:
     ### top_k_percent_pixels: 1.0  # only backpropagate loss for the topk 100% pixels.
   train_data:
     output_size: [256, 256] ### [512, 1024]
-    train_on_crops: true
     input_path: 'D:/data/test_data/val**'
     is_training: true
     global_batch_size: 12 ### 16

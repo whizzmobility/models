@@ -450,7 +450,6 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
               aug_scale_max=2.0),
           validation_data=DataConfig(
               output_size=[1024, 2048],
-              train_on_crops=True, #??? wtf
               tfds_data_dir='D:/data',
               tfds_name='cityscapes/semantic_segmentation',
               tfds_split='validation',
@@ -545,7 +544,6 @@ def seg_deeplabv3plus_scooter() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               input_path=scooter_path_glob,
               output_size=[512, 512],
-              train_on_crops=True,
               is_training=True,
               global_batch_size=1,
               aug_scale_min=0.5,
@@ -555,7 +553,7 @@ def seg_deeplabv3plus_scooter() -> cfg.ExperimentConfig:
               output_size=[512, 512],
               is_training=False,
               global_batch_size=1,
-              resize_eval_groundtruth=True, # true if train_on_crops
+              resize_eval_groundtruth=True,
               drop_remainder=False)),
           # resnet101
           # init_checkpoint='D:/repos/data_root/test_data/deeplab_cityscapes_pretrained/model.ckpt',
