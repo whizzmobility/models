@@ -18,6 +18,8 @@ PingoLH hardblock-v2 (not pulled) includes conv with biases
 import logging
 # Import libraries
 import tensorflow as tf
+
+from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -181,12 +183,12 @@ class HardNet(tf.keras.Model):
 @factory.register_backbone_builder('hardnet')
 def build_hardnet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds Hardnet backbone from a config."""
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_type = backbone_config.type
+  backbone_cfg = backbone_config.get()
   assert backbone_type == 'hardnet', (f'Inconsistent backbone type '
                                      f'{backbone_type}')
 
