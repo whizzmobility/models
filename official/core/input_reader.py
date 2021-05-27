@@ -20,9 +20,11 @@ from absl import logging
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-import resource
-low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
+import os
+if os.name == 'posix':
+  import resource
+  low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
+  resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
 
 from official.core import config_definitions as cfg
 
