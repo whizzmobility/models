@@ -54,6 +54,7 @@ task:
     is_training: false
     global_batch_size: 1 ### 16
     dtype: 'float32'
+    preserve_aspect_ratio: false
     drop_remainder: false
     resize_eval_groundtruth: true
   init_checkpoint: '/home/whizz/experiments/imagenet/imagenet_hardnet_gpu_256x256_randaug/ckpt-2502000'

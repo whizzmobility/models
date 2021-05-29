@@ -262,7 +262,10 @@ class Parser(parser.Parser):
 
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(
-        image, self._output_size, self._output_size, self._preserve_aspect_ratio)
+        image,
+        self._output_size,
+        self._output_size,
+        preserve_aspect_ratio=self._preserve_aspect_ratio)
 
     if self._resize_eval_groundtruth:
       # Resizes eval masks to match input image sizes. In that case, mean IoU
