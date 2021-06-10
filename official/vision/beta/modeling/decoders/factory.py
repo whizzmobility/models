@@ -28,6 +28,7 @@ from official.vision.beta.modeling import decoders
 def build_decoder(
     input_specs: Mapping[str, tf.TensorShape],
     model_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config = None,
     l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
 ) -> tf.keras.Model:
   """Builds decoder from a config.
@@ -44,7 +45,8 @@ def build_decoder(
   """
   decoder_type = model_config.decoder.type
   decoder_cfg = model_config.decoder.get()
-  norm_activation_config = model_config.norm_activation
+  if norm_activation_config is None:
+    norm_activation_config = model_config.norm_activation
 
   if decoder_type == 'identity':
     decoder = None
