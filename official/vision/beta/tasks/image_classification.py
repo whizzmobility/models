@@ -22,12 +22,14 @@ from official.core import base_task
 from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import image_classification as exp_cfg
+from official.vision.beta.configs import multitask_config
 from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import tfds_classification_decoders
 from official.vision.beta.modeling import factory
 
 
+@task_factory.register_task_cls(multitask_config.ImageClassificationSubtask)
 @task_factory.register_task_cls(exp_cfg.ImageClassificationTask)
 class ImageClassificationTask(base_task.Task):
   """A task for image classification."""

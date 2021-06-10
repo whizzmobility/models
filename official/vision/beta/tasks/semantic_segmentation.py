@@ -21,6 +21,7 @@ from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
 from official.vision.beta.configs import semantic_segmentation as exp_cfg
+from official.vision.beta.configs import multitask_config
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import segmentation_input
 from official.vision.beta.dataloaders import tfds_segmentation_decoders
@@ -31,6 +32,7 @@ from official.vision.beta.ops.colormaps import get_colormap
 from orbit.utils import SummaryManager
 
 
+@task_factory.register_task_cls(multitask_config.SemanticSegmentationSubtask)
 @task_factory.register_task_cls(exp_cfg.SemanticSegmentationTask)
 class SemanticSegmentationTask(base_task.Task):
   """A task for semantic segmentation."""
@@ -73,7 +75,7 @@ class SemanticSegmentationTask(base_task.Task):
     if 'all' in self.task_config.init_checkpoint_modules:
       ckpt = tf.train.Checkpoint(**model.checkpoint_items)
       status = ckpt.restore(ckpt_dir_or_file)
-      status.assert_consumed()
+      status.expect_partial().assert_existing_objects_matched()
     else:
       ckpt_items = {}
       if 'backbone' in self.task_config.init_checkpoint_modules:
