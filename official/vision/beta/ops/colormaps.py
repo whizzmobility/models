@@ -41,7 +41,29 @@ def get_colormap(cmap_type='cityscapes',
     empty_labels = tf.tile(tf.constant([[255]], dtype=tf.uint8), 
                            multiples=(ignore_label-max_label, 3))
     cmap = tf.concat((cmap, empty_labels), axis=0)
-
+  
+  elif cmap_type == 'cityscapes_int':
+    # two complement of above values + BGR instead of RGB
+    cmap = tf.constant([
+      -25149312, 
+      -18340876, 
+      -28948922, 
+      -23304602, 
+      -23488066, 
+      -23488103, 
+      -31544582, 
+      -33497892, 
+      -31224213, 
+      -23528552, 
+      -21724672, 
+      -29616932, 
+      -33554177, 
+      -24248320, 
+      -28966912, 
+      -26985472, 
+      -26980352, 
+      -18481152, 
+      -31454345], dtype=tf.int32)
   else:
     raise ValueError('Invalid colormap type specified %s.' %cmap_type)
 
