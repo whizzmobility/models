@@ -21,12 +21,14 @@ from typing import Optional, List
 import tensorflow as tf
 
 from official.core import config_definitions as cfg
+from official.modeling.multitask import configs as multi_cfg
 from official.core import export_base
 from official.core import train_utils
 from official.vision.beta import configs
 from official.vision.beta.serving import detection
 from official.vision.beta.serving import image_classification
 from official.vision.beta.serving import semantic_segmentation
+from official.vision.beta.serving import multitask
 
 
 def export_inference_graph(
@@ -40,7 +42,9 @@ def export_inference_graph(
     export_module: Optional[export_base.ExportModule] = None,
     export_checkpoint_subdir: Optional[str] = None,
     export_saved_model_subdir: Optional[str] = None,
-    save_options: Optional[tf.saved_model.SaveOptions] = None):
+    save_options: Optional[tf.saved_model.SaveOptions] = None,
+    argmax_outputs: bool = False,
+    visualise_outputs: bool = False):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -62,6 +66,8 @@ def export_inference_graph(
     export_saved_model_subdir: Optional subdirectory under export_dir
       to store saved model.
     save_options: `SaveOptions` for `tf.saved_model.save`.
+    argmax_outputs: Set true to argmax the last channel of all outputs.
+    visualise_outputs: Set true to apply colormap to all single channel outputs.
   """
 
   if export_checkpoint_subdir:
@@ -98,7 +104,17 @@ def export_inference_graph(
           params=params,
           batch_size=batch_size,
           input_image_size=input_image_size,
-          num_channels=num_channels)
+          num_channels=num_channels,
+          argmax_outputs=argmax_outputs,
+          visualise_outputs=visualise_outputs)
+    elif isinstance(params.task, multi_cfg.MultiTaskConfig):
+      export_module = multitask.MultitaskModule(
+          params=params,
+          batch_size=batch_size,
+          input_image_size=input_image_size,
+          num_channels=num_channels,
+          argmax_outputs=argmax_outputs,
+          visualise_outputs=visualise_outputs)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))

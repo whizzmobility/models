@@ -19,6 +19,7 @@ import tensorflow as tf
 
 from official.vision.beta.modeling import factory
 from official.vision.beta.ops import preprocess_ops
+from official.vision.beta.ops.colormaps import get_colormap
 from official.vision.beta.serving import export_base
 
 
@@ -28,6 +29,14 @@ STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 
 class SegmentationModule(export_base.ExportModule):
   """Segmentation Module."""
+
+  def __init__(self, 
+               argmax_outputs: bool = False, 
+               visualise_outputs: bool = False, 
+               *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self._argmax_outputs = argmax_outputs
+    self._visualise_outputs = argmax_outputs and visualise_outputs
 
   def _build_model(self):
     input_specs = tf.keras.layers.InputSpec(
@@ -82,7 +91,17 @@ class SegmentationModule(export_base.ExportModule):
       images = self._build_inputs(images)
       images = tf.expand_dims(images, axis=0)
 
-    masks = self.inference_step(images)
-    masks = tf.image.resize(masks, self._input_image_size, method='bilinear')
+    mask = self.inference_step(images)
+    mask = tf.image.resize(mask, self._input_image_size, method='bilinear')
+    processed_outputs = {}
 
-    return dict(predicted_masks=masks)
+    if self._argmax_outputs:
+      mask = tf.math.argmax(mask, -1)
+    processed_outputs['mask'] = mask
+
+    if self._visualise_outputs and len(mask.shape) == 3:
+      colormap = get_colormap(cmap_type='cityscapes_int')
+      mask = tf.gather(colormap, tf.cast(tf.squeeze(mask), tf.int32))
+      processed_outputs['mask_visualised'] = mask
+
+    return processed_outputs

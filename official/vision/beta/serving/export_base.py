@@ -102,13 +102,6 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
   def inference_from_image_tensors(
       self, inputs: tf.Tensor) -> Mapping[str, tf.Tensor]:
     return self.serve(inputs)
-  
-  @tf.function
-  def inference_from_image_tensors_with_argmax(
-      self, inputs: tf.Tensor) -> Mapping[str, tf.Tensor]:
-    masks = self.serve(inputs)['predicted_masks']
-    masks = tf.math.argmax(masks, -1)
-    return dict(predicted_masks=masks)
 
   @tf.function
   def inference_from_image_bytes(self, inputs: tf.Tensor):
@@ -165,7 +158,7 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
         input_signature = tf.TensorSpec(
             shape=[self._batch_size] + self._input_image_size +
             [self._num_channels],
-            dtype=tf.int32)
+            dtype=tf.uint8)
         signatures[
             def_name] = self.inference_from_image_tensors.get_concrete_function(
                 input_signature)
@@ -180,14 +173,6 @@ class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
             shape=[self._batch_size], dtype=tf.string)
         signatures[
             def_name] = self.inference_from_tf_example.get_concrete_function(
-                input_signature)
-      elif key == 'image_tensor_with_argmax':
-        input_signature = tf.TensorSpec(
-            shape=[self._batch_size] + self._input_image_size +
-            [self._num_channels],
-            dtype=tf.int32)
-        signatures[
-            def_name] = self.inference_from_image_tensors_with_argmax.get_concrete_function(
                 input_signature)
       else:
         raise ValueError('Unrecognized `input_type`')
