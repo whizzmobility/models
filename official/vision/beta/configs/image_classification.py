@@ -40,6 +40,9 @@ class DataConfig(cfg.DataConfig):
   aug_rand_hflip: bool = True
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
+  aug_scale_min: float = 1.0
+  aug_scale_max: float = 1.0
+  preserve_aspect_ratio: bool = True
   file_type: str = 'tfrecord'
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'image/class/label'

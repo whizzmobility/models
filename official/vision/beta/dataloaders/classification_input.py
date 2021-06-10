@@ -51,6 +51,10 @@ class Decoder(decoder.Decoder):
             label_field_key:
                 tf.io.FixedLenFeature((), tf.int64, default_value=-1)
         })
+    keys_to_features.update({
+      'image/height': tf.io.FixedLenFeature((), tf.int64, default_value=0),
+      'image/width': tf.io.FixedLenFeature((), tf.int64, default_value=0)
+    })
     self._keys_to_features = keys_to_features
 
   def decode(self, serialized_example):
@@ -69,6 +73,9 @@ class Parser(parser.Parser):
                aug_rand_hflip: bool = True,
                aug_type: Optional[common.Augmentation] = None,
                is_multilabel: bool = False,
+               aug_scale_min: float = 1.0,
+               aug_scale_max: float = 1.0,
+               preserve_aspect_ratio: bool = True,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -80,6 +87,11 @@ class Parser(parser.Parser):
       label_field_key: `str`, the key name to label in tf.Example.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
+      aug_scale_min: `float`, the minimum scale applied to `output_size` for
+        data augmentation during training.
+      aug_scale_max: `float`, the maximum scale applied to `output_size` for
+        data augmentation during training.
+      preserve_aspect_ratio: `bool`, whether to preserve aspect ratio during resize
       aug_type: An optional Augmentation object to choose from AutoAugment and
         RandAugment.
       is_multilabel: A `bool`, whether or not each example has multiple labels.
@@ -88,6 +100,9 @@ class Parser(parser.Parser):
     """
     self._output_size = output_size
     self._aug_rand_hflip = aug_rand_hflip
+    self._aug_scale_min = aug_scale_min
+    self._aug_scale_max = aug_scale_max
+    self._preserve_aspect_ratio = preserve_aspect_ratio
     self._num_classes = num_classes
     self._image_field_key = image_field_key
     if dtype == 'float32':
@@ -141,24 +156,26 @@ class Parser(parser.Parser):
 
   def _parse_train_image(self, decoded_tensors):
     """Parses image data for training."""
+    # TODO: add option to crop images
     image_bytes = decoded_tensors[self._image_field_key]
-    image_shape = tf.image.extract_jpeg_shape(image_bytes)
+    if 'image/height' in decoded_tensors and 'image/width' in decoded_tensors:
+      image_shape = (decoded_tensors['image/height'], decoded_tensors['image/width'], 3)
+    else:
+      image_shape = tf.image.extract_jpeg_shape(image_bytes)
 
-    # Crops image.
-    # TODO(pengchong): support image format other than JPEG.
-    cropped_image = preprocess_ops.random_crop_image_v2(
-        image_bytes, image_shape)
-    image = tf.cond(
-        tf.reduce_all(tf.equal(tf.shape(cropped_image), image_shape)),
-        lambda: preprocess_ops.center_crop_image_v2(image_bytes, image_shape),
-        lambda: cropped_image)
+    image = tf.io.decode_image(image_bytes, channels=3)
+    image = tf.reshape(image, image_shape)
 
     if self._aug_rand_hflip:
       image = tf.image.random_flip_left_right(image)
-
-    # Resizes image.
-    image = tf.image.resize(
-        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+    
+    image, _ = preprocess_ops.resize_and_crop_image(
+        image,
+        self._output_size,
+        self._output_size,
+        aug_scale_min=self._aug_scale_min,
+        aug_scale_max=self._aug_scale_max,
+        preserve_aspect_ratio=self._preserve_aspect_ratio)
 
     # Apply autoaug or randaug.
     if self._augmenter is not None:
@@ -176,14 +193,18 @@ class Parser(parser.Parser):
 
   def _parse_eval_image(self, decoded_tensors):
     """Parses image data for evaluation."""
-    image_bytes = decoded_tensors[self._image_field_key]
-    image_shape = tf.image.extract_jpeg_shape(image_bytes)
+    image = tf.io.decode_image(
+      decoded_tensors[self._image_field_key], channels=3)
 
-    # Center crops and resizes image.
-    image = preprocess_ops.center_crop_image_v2(image_bytes, image_shape)
+    image = tf.reshape(image, 
+      (decoded_tensors['image/height'], decoded_tensors['image/width'], 3))
 
-    image = tf.image.resize(
-        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+    # TODO: Add option to center crop and resize image.
+    image, _ = preprocess_ops.resize_and_crop_image(
+        image,
+        self._output_size,
+        self._output_size,
+        preserve_aspect_ratio=self._preserve_aspect_ratio)
 
     image = tf.reshape(image, [self._output_size[0], self._output_size[1], 3])
 
