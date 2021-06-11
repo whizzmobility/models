@@ -2,7 +2,9 @@ runtime:
   distribution_strategy: 'mirrored'
   # mixed_precision_dtype: 'float16'
   # loss_scale: 'dynamic'
-  num_gpus: 3
+
+  num_gpus: 1
+
 task:
   model:
     num_classes: 1001
@@ -28,11 +30,13 @@ task:
     tfds_split: 'train'
     sharding: true
     is_training: true
-    global_batch_size: 1024  # 128 * 8
+
+    global_batch_size: 256  # 128 * 8
+
     dtype: 'float16'
+    aug_rand_hflip: true
     aug_policy: randaug
     randaug_magnitude: 5 # 5-10 for image classification
-    # randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
   validation_data:
     input_path: ''
     tfds_data_dir: '/home/whizz/data'
@@ -40,25 +44,30 @@ task:
     tfds_split: 'validation'
     sharding: true
     is_training: true
-    global_batch_size: 1024  # 128 * 8
+    global_batch_size: 256  # 128 * 8
     dtype: 'float16'
     drop_remainder: false
 trainer:
-  train_steps: 625500  # 500 epochs
-  validation_steps: 49
-  validation_interval: 1251
-  steps_per_loop: 1251  # NUM_EXAMPLES (1281167) // global_batch_size
-  summary_interval: 1251
-  checkpoint_interval: 1251
+
+  train_steps: 2502000  # 500 epochs
+  validation_steps: 1281167
+  validation_interval: 5004
+  steps_per_loop: 5004  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 80064
+  checkpoint_interval: 80064
+
   optimizer_config:
     learning_rate:
       type: 'exponential'
       exponential:
-        initial_learning_rate: 0.064  # 0.008 * batch_size / 128
-        decay_steps: 3127  # 2.5 * steps_per_epoch
+
+        initial_learning_rate: 0.001  # 0.008 * batch_size / 128
+        decay_steps: 15012  # 2.5 * steps_per_epoch
         decay_rate: 0.96
+
         staircase: true
     warmup:
       type: 'linear'
       linear:
-        warmup_steps: 6255
+
+        warmup_steps: 25020

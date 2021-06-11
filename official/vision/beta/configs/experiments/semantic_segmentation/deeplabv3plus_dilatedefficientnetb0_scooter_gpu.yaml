@@ -3,7 +3,9 @@
 runtime:
   distribution_strategy: 'mirrored'
   # mixed_precision_dtype: 'float32'
-  num_gpus: 3
+  
+  num_gpus: 2
+
 task:
   model:
     num_classes: 19
@@ -39,10 +41,12 @@ task:
     top_k_percent_pixels: 0.3  # only backpropagate loss for the topk 100% pixels.
     class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
   train_data:
-    output_size: [256, 256] ### [512, 1024]
-    input_path: 'D:/data/test_data/val**'
+    output_size: [256, 256]
+    input_path: ' /mnt/ssd2/tfrecords/seg_train**'
     is_training: true
+    
     global_batch_size: 16
+    
     dtype: 'float32'
     aug_rand_hflip: true
     aug_scale_max: 2.0
@@ -56,19 +60,24 @@ task:
     randaug_magnitude: 5 # 5-10 for image classification
     randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
   validation_data:
-    output_size: [256, 256] ### [1024, 2048]
-    input_path: 'D:/data/test_data/val**'
+    output_size: [256, 256]
+    input_path: '/mnt/ssd2/tfrecords/seg_val**'
     is_training: false
     global_batch_size: 1 ### 16
     dtype: 'float32'
+    preserve_aspect_ratio: false
     drop_remainder: false
     resize_eval_groundtruth: true
+  init_checkpoint: ''
+  init_checkpoint_modules: 'backbone'
 trainer:
   optimizer_config:
     learning_rate:
       exponential:
-        initial_learning_rate: 0.001
-        decay_steps: 2160 # train steps per epoch * 5
+        
+        initial_learning_rate: 0.016
+        decay_steps: 4320   # 2.5-5 * train_steps_per_epoch (train_steps for poly)
+        
         decay_rate: 0.97
       type: exponential
     optimizer:
@@ -81,13 +90,17 @@ trainer:
       linear:
         name: linear
         warmup_learning_rate: 0
-        warmup_steps: 432 # train steps_per_epoch
+        
+        warmup_steps: 4320  # 5 * train_steps_per_epoch
+      
       type: linear
-  steps_per_loop: 432      # train steps_per_epoch
-  summary_interval: 432    # train steps_per_epoch
-  train_steps: 216000      # train steps_per_epoch * 500
-  validation_interval: 432 # train steps_per_epoch
-  validation_steps: 6915    # val steps_per_epoch
-  checkpoint_interval: 432 # train steps_per_epoch
+  
+  steps_per_loop: 864       # train_steps_per_epoch
+  summary_interval: 1728    # 2 * train_steps_per_epoch
+  train_steps: 864000       # epochs * train steps_per_epoch
+  validation_interval: 864  # train_steps_per_epoch
+  validation_steps: 6915    # val_steps_per_epoch
+  checkpoint_interval: 864  # 2 * train_steps_per_epoch
+  
   best_checkpoint_eval_metric: 'mean_iou' ###
   continuous_eval_timeout: 3600
