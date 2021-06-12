@@ -26,11 +26,17 @@ from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import tfds_classification_decoders
 from official.vision.beta.modeling import factory
+from orbit.utils import SummaryManager
 
 
 @task_factory.register_task_cls(exp_cfg.ImageClassificationTask)
 class ImageClassificationTask(base_task.Task):
   """A task for image classification."""
+
+  def __init__(self, params, logging_dir: str = None, name: str = None):
+    super().__init__(params, logging_dir, name)
+    self.image_summary_manager = SummaryManager(
+      self.logging_dir, tf.summary.image)
 
   def build_model(self):
     """Builds classification model."""
@@ -215,6 +221,10 @@ class ImageClassificationTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
     if self.task_config.losses.one_hot and not is_multilabel:
       labels = tf.one_hot(labels, self.task_config.model.num_classes)
+    
+    self.image_summary_manager.write_summaries({
+      'input_images': features
+    })
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
