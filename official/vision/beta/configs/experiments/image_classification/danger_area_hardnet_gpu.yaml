@@ -1,0 +1,72 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  # mixed_precision_dtype: 'float16'
+  # loss_scale: 'dynamic'
+
+  num_gpus: 1
+
+task:
+  model:
+    num_classes: 4
+    input_size: [256, 256, 3]
+    backbone:
+      type: 'hardnet'
+      hardnet:
+        model_id: 70
+    dropout_rate: 0.2
+    norm_activation:
+      activation: 'relu'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  losses:
+    l2_weight_decay: 0.00001
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: '/mnt/ssd2/tfrecords/cls_env_train*'
+
+    global_batch_size: 16 ###
+
+    is_training: true
+    dtype: 'float16'
+    aug_rand_hflip: true
+    aug_scale_min: 0.5
+    aug_scale_max: 2.0
+    preserve_aspect_ratio: false
+    aug_policy: randaug
+    randaug_magnitude: 5
+  validation_data:
+    input_path: '/mnt/ssd2/tfrecords/cls_env_val*'
+
+    global_batch_size: 1  # 128 * 8
+
+    is_training: false
+    dtype: 'float16'
+    drop_remainder: false
+  evaluation:
+    report_per_class_metrics: true
+trainer:
+
+  train_steps: 98000  # 500 epochs
+  validation_steps: 3107
+  validation_interval: 3107
+  steps_per_loop: 2  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 2
+  checkpoint_interval: 2
+
+  optimizer_config:
+    learning_rate:
+      type: 'exponential'
+      exponential:
+
+        initial_learning_rate: 0.001  # 0.008 * batch_size / 128
+        decay_steps: 486  # 2.5 * steps_per_epoch
+        decay_rate: 0.96
+
+        staircase: true
+    warmup:
+      type: 'linear'
+      linear:
+
+        warmup_steps: 970
