@@ -71,7 +71,7 @@ def main(_):
 
   elif isinstance(params, multi_cfg.MultiTaskExperimentConfig):
     with distribution_strategy.scope():
-      task = multitask.MultiTask.from_config(params.task)
+      task = multitask.MultiTask.from_config(params.task, model_dir)
       model = multihead_model.build_model(params.task)
 
     train_lib_multitask.run_experiment(
