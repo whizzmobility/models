@@ -49,7 +49,7 @@ def build_submodel(
     input_specs: tf.keras.layers.InputSpec,
     submodel_config: multitask_config.Submodel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
-  """Builds submodel. Leverages on SegmentationModel's structure that 
+  """Builds submodel for a subtask. Leverages on SegmentationModel's structure that 
   takes any arbitrary backbone, decoder and head."""
   decoder = decoder_factory.build_decoder(
       input_specs=backbone.output_specs,
@@ -155,10 +155,8 @@ class MultiHeadMultiTaskModel(base_model.MultiTaskBaseModel):
       if self._heads[name].init_checkpoint_modules == 'all':
         ckpt = tf.train.Checkpoint(decoder=submodel.decoder, 
                                    head=submodel.head)
-      else:
-        continue
-      status = ckpt.restore(ckpt_dir_or_file)
-      status.expect_partial().assert_existing_objects_matched()
+        status = ckpt.restore(ckpt_dir_or_file)
+        status.expect_partial().assert_existing_objects_matched()
 
     logging.info('Finished loading pretrained checkpoint from %s',
                   ckpt_dir_or_file)
