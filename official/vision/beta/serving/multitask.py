@@ -1,34 +1,23 @@
-# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 # Lint as: python3
 """Semantic segmentation input and model functions for serving/inference."""
 
+from typing import Mapping
+
+from absl import logging
 import tensorflow as tf
 
-from official.vision.beta.modeling import factory
+from official.vision.beta.modeling import factory_multitask
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.ops.colormaps import get_colormap
 from official.vision.beta.serving import export_base
 
-
+# RGB mean and stddev from ImageNet
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
 STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 
 
-class SegmentationModule(export_base.ExportModule):
-  """Segmentation Module."""
+class MultitaskModule(export_base.ExportModule):
+  """Multitask Module."""
 
   def __init__(self, 
                argmax_outputs: bool = False, 
@@ -42,12 +31,12 @@ class SegmentationModule(export_base.ExportModule):
     input_specs = tf.keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
-    return factory.build_segmentation_model(
+    return factory_multitask.build_multihead_model(
         input_specs=input_specs,
-        model_config=self.params.task.model,
+        task_config=self.params.task,
         l2_regularizer=None)
 
-  def _build_inputs(self, image):
+  def _build_inputs(self, image: tf.Tensor) -> tf.Tensor:
     """Builds classification model inputs for serving."""
 
     # Normalizes image with mean and std pixel values.
@@ -63,7 +52,7 @@ class SegmentationModule(export_base.ExportModule):
         aug_scale_max=1.0)
     return image
 
-  def serve(self, images):
+  def serve(self, images: tf.Tensor) -> Mapping[str, tf.Tensor]:
     """Cast image to float and run inference.
 
     Args:
@@ -91,17 +80,22 @@ class SegmentationModule(export_base.ExportModule):
       images = self._build_inputs(images)
       images = tf.expand_dims(images, axis=0)
 
-    mask = self.inference_step(images)
-    mask = tf.image.resize(mask, self._input_image_size, method='bilinear')
+    outputs = self.inference_step(images)
     processed_outputs = {}
+    
+    for name, output in outputs.items():
+      
+      if len(output.shape) == 4:
+        output = tf.image.resize(
+          output, self._input_image_size, method='bilinear')
+      
+      if self._argmax_outputs:
+        output = tf.math.argmax(output, -1)
+      processed_outputs[name] = output
 
-    if self._argmax_outputs:
-      mask = tf.math.argmax(mask, -1)
-    processed_outputs['mask'] = mask
-
-    if self._visualise_outputs and len(mask.shape) == 3:
-      colormap = get_colormap(cmap_type='cityscapes_int')
-      mask = tf.gather(colormap, tf.cast(tf.squeeze(mask), tf.int32))
-      processed_outputs['mask_visualised'] = mask
+      if self._visualise_outputs and len(output.shape) == 3:
+        colormap = get_colormap(cmap_type='cityscapes_int')
+        processed_outputs[name + '_visualised'] = tf.gather(
+          colormap, tf.cast(tf.squeeze(output), tf.int32))
 
     return processed_outputs

@@ -73,6 +73,8 @@ flags.DEFINE_string(
     'input_image_size', '224,224',
     'The comma-separated string of two integers representing the height,width '
     'of the input to the model.')
+flags.DEFINE_bool('argmax_outputs', False, 'Argmax the last channel of all outputs.')
+flags.DEFINE_bool('visualise_outputs', False, 'Apply colormap to all single channel outputs.')
 
 
 def main(_):
@@ -96,7 +98,9 @@ def main(_):
       checkpoint_path=FLAGS.checkpoint_path,
       export_dir=FLAGS.export_dir,
       export_checkpoint_subdir='checkpoint',
-      export_saved_model_subdir='saved_model')
+      export_saved_model_subdir='saved_model',
+      argmax_outputs=FLAGS.argmax_outputs,
+      visualise_outputs=FLAGS.visualise_outputs)
 
 
 if __name__ == '__main__':
