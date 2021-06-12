@@ -105,6 +105,10 @@ def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
       eval_summary_dir=os.path.join(model_dir, 'validation'),
       summary_interval=params.trainer.summary_interval)
 
+  # Validation is removed from distribution strategy due to assign_add present in 
+  # tf.keras.metrics.MeanIoU and keras_cv.metrics.PerClassIoU
+  # "ValueError: SyncOnReadVariable does not support `assign_add` in cross-replica 
+  # context when aggregation is set to `tf.VariableAggregation.SUM`"
   logging.info('Starts to execute mode: %s', mode)
   if mode == 'train':
     with distribution_strategy.scope():
