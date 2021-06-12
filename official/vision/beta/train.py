@@ -28,6 +28,11 @@ from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
+from official.modeling.hyperparams import config_definitions as cfg
+from official.modeling.multitask import configs as multi_cfg
+from official.modeling.multitask import multitask
+from official.modeling.multitask import train_lib as train_lib_multitask
+from official.vision.beta.modeling import multihead_model
 
 FLAGS = flags.FLAGS
 
@@ -52,15 +57,34 @@ def main(_):
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,
       tpu_address=params.runtime.tpu)
-  with distribution_strategy.scope():
-    task = task_factory.get_task(params.task, logging_dir=model_dir)
 
-  train_lib.run_experiment(
-      distribution_strategy=distribution_strategy,
-      task=task,
-      mode=FLAGS.mode,
-      params=params,
-      model_dir=model_dir)
+  if isinstance(params, cfg.ExperimentConfig):
+    with distribution_strategy.scope():
+      task = task_factory.get_task(params.task, logging_dir=model_dir)
+
+    train_lib.run_experiment(
+        distribution_strategy=distribution_strategy,
+        task=task,
+        mode=FLAGS.mode,
+        params=params,
+        model_dir=model_dir)
+
+  elif isinstance(params, multi_cfg.MultiTaskExperimentConfig):
+    with distribution_strategy.scope():
+      task = multitask.MultiTask.from_config(params.task)
+      model = multihead_model.build_model(params.task)
+
+    train_lib_multitask.run_experiment(
+        distribution_strategy=distribution_strategy,
+        task=task,
+        model=model,
+        mode=FLAGS.mode,
+        params=params,
+        model_dir=model_dir)
+
+  else:
+    raise ValueError("Expected config to be either type cfg.ExperimentConfig" + \
+      "or multi_cfg.MultiTaskExperimentConfig, got %s" %type(params))
 
   train_utils.save_gin_config(FLAGS.mode, model_dir)
 
