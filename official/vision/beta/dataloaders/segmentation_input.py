@@ -98,6 +98,7 @@ class Parser(parser.Parser):
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
         data augmentation during training.
+      preserve_aspect_ratio: `bool`, whether to preserve aspect ratio during resize
       rotate_min: `float`, the minimum rotation applied to `output_size` for
         data augmentation during training.
       rotate_max: `float`, the maximum rotation applied to `output_size` for
