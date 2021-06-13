@@ -76,6 +76,7 @@ class Losses(hyperparams.Config):
 @dataclasses.dataclass
 class Evaluation(hyperparams.Config):
   top_k: int = 5
+  report_per_class_metrics: bool = False
 
 
 @dataclasses.dataclass

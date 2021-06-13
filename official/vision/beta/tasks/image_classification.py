@@ -26,6 +26,7 @@ from official.vision.beta.configs import multitask_config
 from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import tfds_classification_decoders
+from official.vision.beta.evaluation import classification_metrics
 from official.vision.beta.modeling import factory
 from orbit.utils import SummaryManager
 
@@ -182,6 +183,12 @@ class ImageClassificationTask(base_task.Task):
             tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
             tf.keras.metrics.SparseTopKCategoricalAccuracy(
                 k=k, name='top_{}_accuracy'.format(k))]
+      
+      metrics.append(classification_metrics.Precision(
+        name='overall_precision', num_classes=self.task_config.model.num_classes))
+      metrics.append(classification_metrics.Recall(
+        name='overall_recall', num_classes=self.task_config.model.num_classes))
+    
     else:
       metrics = []
       # These metrics destablize the training if included in training. The jobs
@@ -201,6 +208,18 @@ class ImageClassificationTask(base_task.Task):
                 num_labels=self.task_config.model.num_classes,
                 from_logits=True),
         ]
+
+    if self.task_config.evaluation.report_per_class_metrics:
+      for class_no in range(self.task_config.model.num_classes):
+        metrics.append(classification_metrics.Precision(
+          name='precision_%s' %str(class_no),
+          num_classes=self.task_config.model.num_classes,
+          class_id=class_no))
+        metrics.append(classification_metrics.Recall(
+          name='recall_%s' %str(class_no),
+          num_classes=self.task_config.model.num_classes,
+          class_id=class_no))
+
     return metrics
 
   def train_step(self,

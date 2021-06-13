@@ -92,7 +92,7 @@ task:
         num_classes: 4  # has to match model's
       losses:
         label_smoothing: 0.1
-        one_hot: false
+        one_hot: true # required for classification metrics
       train_data:
         input_path: '/mnt/ssd2/tfrecords/cls_env_train*'
 
@@ -111,15 +111,17 @@ task:
         is_training: false
         preserve_aspect_ratio: false
         drop_remainder: false
+      evaluation:
+        report_per_class_metrics: true
 trainer:
-  trainer_type: joint # interleaving no train_loop_end for logging yet
+  trainer_type: interleaving # interleaving no train_loop_end for logging yet
   task_sampler:
     proportional:
       alpha: 1.0
     type: proportional
 
   steps_per_loop: 432         # train_steps_per_epoch
-  summary_interval: 6915      # 2 * train_steps_per_epoch
+  summary_interval: 864       # 2 * train_steps_per_epoch
   checkpoint_interval: 6915   # 2 * train_steps_per_epoch
   train_steps: 864000         # epochs * steps_per_epoch
   validation_steps: 6915      # val_steps_per_epoch
