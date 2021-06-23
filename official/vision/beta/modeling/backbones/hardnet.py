@@ -18,6 +18,7 @@ PingoLH hardblock-v2 (not pulled) includes conv with biases
 import logging
 # Import libraries
 import tensorflow as tf
+import tensorflow_model_optimization as tfmot
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
@@ -192,7 +193,7 @@ def build_hardnet(
   assert backbone_type == 'hardnet', (f'Inconsistent backbone type '
                                      f'{backbone_type}')
 
-  return HardNet(
+  model = HardNet(
       model_id=backbone_cfg.model_id,
       input_specs=input_specs,
       activation=norm_activation_config.activation,
@@ -200,3 +201,21 @@ def build_hardnet(
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
       kernel_regularizer=l2_regularizer)
+  
+  def clone_function(layer):
+    logging.info("layer %s" %(type(layer)))
+    if hasattr(layer, 'layers'):
+      for sublayer in layer.layers:
+        logging.info("sublayer %s" %(type(sublayer)))
+
+    if not isinstance(layer, layers.experimental.SyncBatchNormalization) and \
+      not isinstance(layer, layers.BatchNormalization):
+      return tfmot.quantization.keras.quantize_annotate_layer(layer)
+    else:
+      logging.info("\nthis is a normalization layer")
+    return layer
+  
+  annotated_model = tf.keras.models.clone_model(model, clone_function=clone_function)
+  model = tfmot.quantization.keras.quantize_apply(annotated_model)
+
+  return model
