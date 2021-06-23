@@ -56,6 +56,7 @@ class MultiHeadModel(hyperparams.Config):
   norm_activation: common.NormActivation = common.NormActivation()
   heads: List[Submodel] = dataclasses.field(default_factory=list)
   l2_weight_decay: float = 0.0
+  quantized: bool = False
 
 
 @dataclasses.dataclass

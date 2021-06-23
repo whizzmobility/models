@@ -104,6 +104,7 @@ class MultiHeadMultiTaskModel(base_model.MultiTaskBaseModel):
                input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
                  shape=[None, None, None, 3]),
                init_checkpoint: str = '',
+               quantized: bool = False,
                *args, **kwargs):
     
     self.backbone = backbone
@@ -111,6 +112,7 @@ class MultiHeadMultiTaskModel(base_model.MultiTaskBaseModel):
     self._norm_activation_config = norm_activation_config
     self._l2_regularizer = l2_regularizer
     self._init_checkpoint = init_checkpoint
+    self._quantized = quantized
 
     head_configs = {}
     for head_config in heads:

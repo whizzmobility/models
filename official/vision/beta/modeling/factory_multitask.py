@@ -27,7 +27,8 @@ def build_multihead_model(
     norm_activation_config=norm_activation_config,
     l2_regularizer=l2_regularizer,
     input_specs=input_specs,
-    init_checkpoint=task_config.init_checkpoint
+    init_checkpoint=task_config.init_checkpoint,
+    quantized=model_config.quantized
   )
 
   return model
