@@ -19,3 +19,4 @@ from official.vision.beta.modeling.decoders.aspp import ASPP
 from official.vision.beta.modeling.decoders.fpn import FPN
 from official.vision.beta.modeling.decoders.nasfpn import NASFPN
 from official.vision.beta.modeling.decoders.hardnet_decoder import HardNetDecoder
+from official.vision.beta.modeling.decoders.pan import PAN
