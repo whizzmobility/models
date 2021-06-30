@@ -15,7 +15,6 @@ Layers and growth rates:
 PingoLH hardblock-v2 (not pulled) includes conv with biases
 """
 
-import logging
 # Import libraries
 import tensorflow as tf
 
@@ -152,8 +151,6 @@ class HardNet(tf.keras.Model):
     endpoints[str(i+1)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
-    for i, v in endpoints.items():
-      logging.info(f"{i}, {v}, {v.shape}")
 
     super(HardNet, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
