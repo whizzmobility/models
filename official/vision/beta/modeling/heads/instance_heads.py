@@ -14,11 +14,13 @@
 
 """Contains definitions of instance prediction heads."""
 
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Mapping
 # Import libraries
 import tensorflow as tf
 
 from official.modeling import tf_utils
+
+layers = tf.keras.layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -435,6 +437,123 @@ class MaskHead(tf.keras.layers.Layer):
     mask_outputs = tf.gather_nd(
         tf.transpose(logits, [0, 1, 4, 2, 3]), gather_indices)
     return mask_outputs
+
+  def get_config(self):
+    return self._config_dict
+
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class YOLOv3Head(tf.keras.layers.Layer):
+  """Creates a YOLOv3Head head."""
+
+  def __init__(
+      self,
+      num_classes: int,
+      input_size: int,
+      strides: List,
+      anchors: List,
+      xy_scale: List,
+      kernel_initializer='VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
+    """Initializes a YOLOv3Head head.
+    Referenced from YOLOv4 implementation on:
+    https://github.com/hunglc007/tensorflow-yolov4-tflite
+
+    Args:
+      num_classes: An `int` number of mask classification categories. The number
+        of classes does not include background class.
+      input_size: An `int` denoting dimension of input
+      strides: A `List` with `int` denoting stride for bbox location prediction
+      anchors: A `List` with `int` denoting width and height scaling for bbox
+      xy_scale: A `List` with `int` denoting x, y scaling for bbox location prediction
+        Length of list should correspond to number of branches.
+      kernel_initializer: kernel_initializer for convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
+    """
+    super(YOLOv3Head, self).__init__(**kwargs)
+
+    self._config_dict = {
+        'num_classes': num_classes,
+        'input_size': input_size,
+        'strides': strides,
+        'anchors': anchors,
+        'xy_scale': xy_scale,
+        'kernel_initializer': kernel_initializer,
+        'kernel_regularizer': kernel_regularizer,
+        'bias_regularizer': bias_regularizer,
+    }
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+
+    self.num_classes = num_classes
+    self.strides = strides
+    self.xy_scale = xy_scale
+
+  def call(self, 
+           backbone_output: Mapping[str, tf.Tensor],
+           decoder_output: Mapping[str, tf.Tensor]):
+    """Forward pass of the YOLOv3 head.
+
+    Args:
+      backbone_output: A `dict` of tensors, to utilise SegmentationModel's 
+        implementation
+      decoder_output: A `dict` of tensors
+        - key: A `str` of the level of the multilevel features.
+        - values: A `tf.Tensor` of the feature map tensors, whose shape is
+            [batch, height_l, width_l, channels].
+    Returns:
+      classification prediction: A `tf.Tensor` of the classification 
+        scores predicted from input features.
+    """
+
+    outputs = {}
+
+    for i, branch in enumerate(decoder_output.values()):
+      x = branch
+      x = layers.Conv2D(
+        filters=3 * (self.num_classes + 5),
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=self._config_dict['kernel_initializer'],
+        kernel_regularizer=self._config_dict['kernel_regularizer'],
+        bias_regularizer=self._config_dict['bias_regularizer'])(x)
+      x_shape = x.shape
+      x = tf.reshape(x,
+                    (x_shape[0], x_shape[1], x_shape[1], 3, 5 + self.num_classes))
+
+      raw_dxdy, raw_dwdh, raw_conf, raw_prob = tf.split(x, (2, 2, 1, self.num_classes),
+                                                        axis=self._bn_axis)
+
+      xy_grid = tf.meshgrid(x_shape[1], x_shape[1])
+      xy_grid = tf.stack(xy_grid, axis=self._bn_axis) # [gx, gy, 2]
+      xy_grid = tf.expand_dims(tf.expand_dims(xy_grid, axis=2), axis=0) # [1, gx, gy, 1, 2]
+      xy_grid = tf.tile(xy_grid, [tf.shape(x)[0], 1, 1, 3, 1])
+      xy_grid = tf.cast(xy_grid, tf.float32)
+
+      pred_xy = ((tf.sigmoid(raw_dxdy) * self.xy_scale[i]) - 0.5 * (self.xy_scale[i] - 1) + xy_grid) * \
+                self.strides[i]
+      pred_wh = (tf.exp(raw_dwdh) * self._config_dict['anchors'][i])
+      pred_xywh = tf.concat([pred_xy, pred_wh], axis=self._bn_axis)
+
+      pred_conf = tf.sigmoid(raw_conf)
+      pred_prob = tf.sigmoid(raw_prob)
+
+      outputs[i] = tf.concat([pred_xywh, pred_conf, pred_prob], axis=self._bn_axis)
+
+    return outputs
 
   def get_config(self):
     return self._config_dict
