@@ -13,7 +13,8 @@ class PANetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       (256, 3),
       (384, 3),
-      (512, 3)
+      (512, 3),
+      (256, 2)
   )
   def test_network_creation(self, input_size, levels):
     """Test creation of HardnetDecoder."""

@@ -12,6 +12,7 @@ from official.modeling import tf_utils
 layers = tf.keras.layers
 
 PANET_SPECS = {
+  2: [256, 256],
   3: [256, 128, 256, 512]
 }
 
@@ -64,8 +65,7 @@ class PAN(tf.keras.Model):
       self.norm = layers.experimental.SyncBatchNormalization
     else:
       self.norm = layers.BatchNormalization
-    activation_fn = layers.Activation(
-        tf_utils.get_activation(activation))
+    self.activation_fn = tf_utils.get_activation(activation)
 
     data_format = tf.keras.backend.image_data_format()
     if data_format == 'channels_last':
@@ -166,8 +166,7 @@ class PAN(tf.keras.Model):
       momentum=self.norm_momentum,
       epsilon=self.norm_epsilon)(x)
 
-    return layers.Activation(
-        tf_utils.get_activation('relu'))(x)
+    return self.activation_fn(x)
 
   def get_config(self):
     return self._config_dict
