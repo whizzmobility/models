@@ -14,7 +14,10 @@
 
 """Helper functions for creating TFRecord datasets."""
 
+from typing import List
 import hashlib
+import os
+import glob
 import io
 import itertools
 
@@ -24,6 +27,35 @@ from PIL import Image
 import tensorflow as tf
 
 import multiprocessing as mp
+
+
+def get_all_files(directory:str, 
+                  extension:str=None) -> List[str]:
+    """
+    Gets all files in a directory recursively, of given extension
+    If no extension is given, gets all files
+
+    Args:
+      directory: path to directory to find files in
+      extension: end of path to desired files
+    
+    Returns:
+      List of file paths.
+    """
+    def including_condition(x):
+        if extension is None:
+            return os.path.isfile(x)
+        if isinstance(extension, str):
+            return x.endswith(extension)
+        result = False
+        for ext in extension:
+            if x.endswith(ext):
+                result = True
+        return result
+
+    return [f for f in glob.glob(
+        os.path.join(directory, "**/*"),
+        recursive=True) if including_condition(f)]
 
 
 def convert_to_feature(value, value_type=None):

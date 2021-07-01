@@ -1,23 +1,9 @@
-"""Convert images in jpg or png to TFRecord format.
-
-This scripts follows the label map decoder format and supports only 
-instance masks and captions.
-
-Example usage:
-    python create_img_tf_record.py --logtostderr \
-      --image_dir="${TRAIN_IMAGE_DIR}" \
-      --image_info_file="${TRAIN_IMAGE_INFO_FILE}" \
-      --object_annotations_file="${TRAIN_ANNOTATIONS_FILE}" \
-      --caption_annotations_file="${CAPTION_ANNOTATIONS_FILE}" \
-      --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}" \
-      --num_shards=100
-"""
+"""Convert jpg/png images and corresponding json label to TFRecord format."""
 
 import logging
 import os
-import glob
 import json
-from typing import List, Hashable, Dict, Tuple
+from typing import Hashable, Dict, Tuple
 
 from absl import app  # pylint:disable=unused-import
 from absl import flags
@@ -36,35 +22,6 @@ FLAGS = flags.FLAGS
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
-
-
-def get_all_files(directory:str, 
-                  extension:str=None) -> List[str]:
-    """
-    Gets all files in a directory recursively, of given extension
-    If no extension is given, gets all files
-
-    Args:
-      directory: path to directory to find files in
-      extension: end of path to desired files
-    
-    Returns:
-      List of file paths.
-    """
-    def including_condition(x):
-        if extension is None:
-            return os.path.isfile(x)
-        if isinstance(extension, str):
-            return x.endswith(extension)
-        result = False
-        for ext in extension:
-            if x.endswith(ext):
-                result = True
-        return result
-
-    return [f for f in glob.glob(
-        os.path.join(directory, "**/*"),
-        recursive=True) if including_condition(f)]
 
 
 def generate_annotations(images_filenames: str, 
@@ -167,6 +124,7 @@ def _create_tf_record_from_imgs(image_dir: str,
         image_dir: Directory containing the image files.
         classes_json: Path to json file containing mapping for labels
         output_path: Path to output tf.Record file.
+        json_key: key to read from in corresponding json file
         num_shards: Number of output files to create.
     """
 
@@ -176,7 +134,7 @@ def _create_tf_record_from_imgs(image_dir: str,
     with open(classes_json) as f:
       classes_map = json.load(f)
 
-    img_filenames = get_all_files(image_dir, extension=[".png", ".jpg"])
+    img_filenames = tfrecord_lib.get_all_files(image_dir, extension=[".png", ".jpg"])
     logging.info("Found total of %s images." %len(img_filenames))
 
     coco_annotations_iter = generate_annotations(img_filenames, classes_map, json_key)

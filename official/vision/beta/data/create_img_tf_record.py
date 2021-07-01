@@ -1,17 +1,4 @@
-"""Convert images in jpg or png to TFRecord format.
-
-This scripts follows the label map decoder format and supports only 
-instance masks and captions.
-
-Example usage:
-    python create_img_tf_record.py --logtostderr \
-      --image_dir="${TRAIN_IMAGE_DIR}" \
-      --image_info_file="${TRAIN_IMAGE_INFO_FILE}" \
-      --object_annotations_file="${TRAIN_ANNOTATIONS_FILE}" \
-      --caption_annotations_file="${CAPTION_ANNOTATIONS_FILE}" \
-      --output_file_prefix="${OUTPUT_DIR/FILE_PREFIX}" \
-      --num_shards=100
-"""
+"""Convert jpg/png images and png masks to TFRecord format."""
 
 import logging
 import os
@@ -33,27 +20,6 @@ FLAGS = flags.FLAGS
 
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
-
-
-def get_all_files(directory, extension=None):
-    """
-    Gets all files in a directory recursively, of given extension
-    If no extension is given, gets all files
-    """
-    def including_condition(x):
-        if extension is None:
-            return os.path.isfile(x)
-        if isinstance(extension, str):
-            return x.endswith(extension)
-        result = False
-        for ext in extension:
-            if x.endswith(ext):
-                result = True
-        return result
-
-    return [f for f in glob.glob(
-        os.path.join(directory, "**/*"),
-        recursive=True) if including_condition(f)]
 
 
 def generate_annotations(images_filenames, seg_filenames):
@@ -137,8 +103,8 @@ def _create_tf_record_from_imgs(image_dir,
     """
 
     logging.info('writing to output path: %s', output_path)
-    img_filenames = get_all_files(image_dir, extension=[".png", ".jpg"])
-    seg_filenames = get_all_files(seg_dir, extension=[".png", ".jpg"])
+    img_filenames = tfrecord_lib.get_all_files(image_dir, extension=[".png", ".jpg"])
+    seg_filenames = tfrecord_lib.get_all_files(seg_dir, extension=[".png", ".jpg"])
     assert len(img_filenames) == len(seg_filenames), "Found %s images but %s ground truth masks." %(
         len(img_filenames), len(seg_filenames))
     logging.info("Found total of %s images and ground truth masks." %len(img_filenames))
