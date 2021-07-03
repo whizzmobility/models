@@ -9,17 +9,34 @@ import tensorflow as tf
 
 
 def preprocess_true_boxes(bboxes,
-                          train_output_sizes: List,
+                          train_output_sizes: List[int],
                           anchor_per_scale: int,
                           num_classes: int,
                           max_bbox_per_scale: int,
-                          strides: List,
+                          strides: List[int],
                           anchors: tf.Tensor,
-                          bbox_is_in_pixel=True):
+                          is_bbox_in_pixels=True,
+                          is_xywh=False):
   """
+  train_output_sizes: `List[int]`, dimension of each scaled feature map
+  anchor_per_scale: `int`, number of anchors per scale
+  num_classes: `int`, number of classes.
+  max_bbox_per_Scale: `int`, maximum number of bounding boxes per scale.
+  strides: `List[int]` of output strides, ratio of input to output resolution.
+  anchors: `tf.Tensor` of shape (None, anchor_per_scale, 2) denothing positions
+    of anchors
+  is_bbox_in_pixels: `bool`, true if bounding box values are in pixels
+  is_xywh: `bool`, true if bounding box values are in (x, y, width, height) format
+
   !!! Assumes the images and boxes are preprocessed to fit image size.
   Scaling will be according to output sizes predicted by output strides
   """
+  
+  if (is_bbox_in_pixels and is_xywh):
+    raise NotImplementedError('Processing for xywh in pixel format not implemented.')
+  if (not is_bbox_in_pixels and is_bbox_in_pixels):
+    raise NotImplementedError('Processing for box corners in float format not implemented')
+
   max_output_size = tf.reduce_max(train_output_sizes)
   label = tf.zeros((len(strides), max_output_size, max_output_size, anchor_per_scale, 5+num_classes))
 
@@ -28,7 +45,7 @@ def preprocess_true_boxes(bboxes,
   const = tf.constant([1.0], dtype=tf.float32)
 
   for bbox in bboxes:
-    if bbox_is_in_pixel:
+    if is_bbox_in_pixels:
       bbox_coor = tf.cast(bbox[:4], tf.float32)
       bbox_xywh = tf.concat([
           (bbox_coor[2:] + bbox_coor[:2]) * 0.5,
