@@ -13,7 +13,7 @@ from official.vision.beta.projects.yolo.ops import preprocess_ops as yolo_prepro
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for yolo task."""
 
-  def __init__(self, bbox_is_in_pixel=False):
+  def __init__(self, is_bbox_in_pixels=False):
     self._keys_to_features = {
         'image/encoded': tf.io.FixedLenFeature((), tf.string, default_value=''),
         'image/height': tf.io.FixedLenFeature((), tf.int64, default_value=0),
@@ -25,7 +25,7 @@ class Decoder(decoder.Decoder):
         'bbox/h':tf.io.VarLenFeature(tf.float32)
     }
 
-    self.bbox_is_in_pixel = bbox_is_in_pixel
+    self.is_bbox_in_pixels = is_bbox_in_pixels
   
   def _decode_image(self, parsed_tensors):
     """Decodes the image and set its static shape."""
@@ -40,7 +40,7 @@ class Decoder(decoder.Decoder):
     w = parsed_tensors['bbox/w']
     h = parsed_tensors['bbox/h']
 
-    if not self.bbox_is_in_pixel:
+    if not self.is_bbox_in_pixels:
       x = x * tf.cast(parsed_tensors['image/width'], tf.float32)
       y = y * tf.cast(parsed_tensors['image/height'], tf.float32)
       w = w * tf.cast(parsed_tensors['image/width'], tf.float32)
@@ -86,7 +86,8 @@ class Parser(parser.Parser):
                max_bbox_per_scale: int,
                strides: List,
                anchors: List,
-               bbox_is_in_pixel: bool,
+               is_bbox_in_pixels: bool,
+               is_xywh: bool,
                aug_policy: Optional[str] = None,
                randaug_magnitude: Optional[int] = 10,
                randaug_available_ops: Optional[List[str]] = None,
@@ -102,13 +103,15 @@ class Parser(parser.Parser):
     Args:
       output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
-      input_size:
-      anchor_per_scale:
-      num_classes:
-      max_bbox_per_Scale:
-      strides:
-      anchors:
-      bbox_is_in_pixel: 
+      input_size: `List[int]`, shape of image input
+      anchor_per_scale: `int`, number of anchors per scale
+      num_classes: `int`, number of classes.
+      max_bbox_per_Scale: `int`, maximum number of bounding boxes per scale.
+      strides: `List[int]` of output strides, ratio of input to output resolution.
+      anchors: `tf.Tensor` of shape (None, anchor_per_scale, 2) denothing positions
+        of anchors
+      is_bbox_in_pixels: `bool`, true if bounding box values are in pixels
+      is_xywh: `bool`, true if bounding box values are in (x, y, width, height) format
       aug_policy: `str`, augmentation policies. None or 'randaug'. TODO support 'autoaug'
       randaug_magnitude: `int`, magnitude of the randaugment policy.
       randaug_available_ops: `List[str]`, specify augmentations for randaug
@@ -133,7 +136,8 @@ class Parser(parser.Parser):
     self.strides = strides
     self.anchors = tf.constant(anchors, dtype=tf.float32)
     self.anchors = tf.reshape(self.anchors, [int(len(anchors)/6), 3, 2])
-    self.bbox_is_in_pixel = bbox_is_in_pixel
+    self.is_bbox_in_pixels = is_bbox_in_pixels
+    self.is_xywh = is_xywh
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
@@ -160,8 +164,6 @@ class Parser(parser.Parser):
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
     image, boxes = data['image'], data['boxes']
-    
-    # import ipdb; ipdb.set_trace()
 
     image, boxes = yolo_preprocess_ops.fit_preserve_aspect_ratio(
         image, boxes, target_dim=self._input_size[0])
@@ -197,7 +199,8 @@ class Parser(parser.Parser):
       max_bbox_per_scale=self.max_bbox_per_scale,
       strides=self.strides,
       anchors=self.anchors,
-      bbox_is_in_pixel=self.bbox_is_in_pixel)
+      is_bbox_in_pixels=self.is_bbox_in_pixels,
+      is_xywh=self.is_xywh)
 
     return image, *result
 
