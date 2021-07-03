@@ -96,6 +96,15 @@ def build_decoder(
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
         kernel_regularizer=l2_regularizer)
+  elif decoder_type == 'pan':
+    decoder = decoders.PAN(
+        input_specs=input_specs,
+        routes=decoder_cfg.levels,
+        activation=norm_activation_config.activation,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        kernel_regularizer=l2_regularizer)
   else:
     raise ValueError('Decoder {!r} not implement'.format(decoder_type))
 
