@@ -22,6 +22,7 @@ from official.vision.beta.configs import image_classification as classification_
 from official.vision.beta.configs import maskrcnn as maskrcnn_cfg
 from official.vision.beta.configs import retinanet as retinanet_cfg
 from official.vision.beta.configs import semantic_segmentation as segmentation_cfg
+from official.vision.beta.configs import yolo as yolo_cfg
 from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling import classification_model
 from official.vision.beta.modeling import maskrcnn_model
@@ -334,6 +335,37 @@ def build_segmentation_model(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
+
+  model = segmentation_model.SegmentationModel(backbone, decoder, head)
+  return model
+
+
+def build_yolo_model(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: yolo_cfg.YoloModel,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds YOLO model."""
+  norm_activation_config = model_config.norm_activation
+  backbone = backbones.factory.build_backbone(
+      input_specs=input_specs,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
+      l2_regularizer=l2_regularizer)
+
+  decoder = decoder_factory.build_decoder(
+      input_specs=backbone.output_specs,
+      model_config=model_config,
+      l2_regularizer=l2_regularizer)
+
+  head_config = model_config.head
+
+  head = instance_heads.YOLOv3Head(
+      num_classes=model_config.num_classes,
+      input_size=head_config.input_size,
+      strides=head_config.strides,
+      anchors=head_config.anchors,
+      xy_scale=head_config.xy_scale,
       kernel_regularizer=l2_regularizer)
 
   model = segmentation_model.SegmentationModel(backbone, decoder, head)
