@@ -66,17 +66,17 @@ def generate_annotations(images_filenames: str,
         with open(text_filename, 'r') as f:  
           data = f.read().split('\n')
         
+        bbox_data = dict((k, list()) for k in ['class', 'x', 'y', 'w', 'h'])
         for line in data:
           if line == '': continue
           box_class, x, y, w, h = line.split(' ')
-          bbox_data = {
-              'class': float(box_class),
-              'x': float(x),
-              'y': float(y),
-              'width': float(w),
-              'height': float(h)
-          }
-          yield (image_data, bbox_data, dir, *args)
+          bbox_data['class'].append(float(box_class))
+          bbox_data['x'].append(float(x))
+          bbox_data['y'].append(float(y))
+          bbox_data['w'].append(float(w))
+          bbox_data['h'].append(float(h))
+
+        yield (image_data, bbox_data, dir, *args)
 
 
 def create_tf_example(image: Dict,
@@ -109,8 +109,8 @@ def create_tf_example(image: Dict,
     feature_dict['bbox/class'] = tfrecord_lib.convert_to_feature(bbox['class'])
     feature_dict['bbox/x'] = tfrecord_lib.convert_to_feature(bbox['x'])
     feature_dict['bbox/y'] = tfrecord_lib.convert_to_feature(bbox['y'])
-    feature_dict['bbox/width'] = tfrecord_lib.convert_to_feature(bbox['width'])
-    feature_dict['bbox/height'] = tfrecord_lib.convert_to_feature(bbox['height'])
+    feature_dict['bbox/w'] = tfrecord_lib.convert_to_feature(bbox['w'])
+    feature_dict['bbox/h'] = tfrecord_lib.convert_to_feature(bbox['h'])
 
     num_annotations_skipped = 0 # data checks
 
