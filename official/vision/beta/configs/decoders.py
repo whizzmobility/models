@@ -61,7 +61,7 @@ class HardNet(hyperparams.Config):
 
 @dataclasses.dataclass
 class PAN(hyperparams.Config):
-  """PAN config."""
+  """Path Aggregation Network Decoder config."""
   levels: int = 3
 
 
