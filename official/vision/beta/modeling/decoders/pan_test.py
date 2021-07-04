@@ -22,7 +22,8 @@ class PANetTest(parameterized.TestCase, tf.test.TestCase):
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     
-    backbone = hardnet.HardNet(model_id=70)
+    backbone = hardnet.HardNet(model_id=70, 
+                               input_specs=inputs)
     decoder = pan.PAN(
         routes=levels,
         input_specs=backbone.output_specs)
@@ -42,10 +43,13 @@ class PANetTest(parameterized.TestCase, tf.test.TestCase):
       channels *= 2
       size /= 2
 
-  def test_serialize_deserialize(self):
+  def test_serialize_deserialize(self, input_size=256):
     # Create a network object that sets all of its config options.
+    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    backbone = hardnet.HardNet(model_id=70, 
+                               input_specs=inputs)
     kwargs = dict(
-        input_specs=hardnet.HardNet(model_id=70).output_specs,
+        input_specs=backbone.output_specs,
         routes=3,
         activation='relu',
         use_sync_bn=False,

@@ -60,6 +60,12 @@ class HardNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class PAN(hyperparams.Config):
+  """Path Aggregation Network Decoder config."""
+  levels: int = 3
+
+
+@dataclasses.dataclass
 class Decoder(hyperparams.OneOfConfig):
   """Configuration for decoders.
 
@@ -73,3 +79,4 @@ class Decoder(hyperparams.OneOfConfig):
   identity: Identity = Identity()
   aspp: ASPP = ASPP()
   hardnet: HardNet = HardNet()
+  pan: PAN = PAN()

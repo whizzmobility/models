@@ -81,11 +81,17 @@ class PAN(tf.keras.Model):
 
     # Build inputs
     inputs = {}
-    input_specs.pop(list(input_specs.keys())[-2])
+    feature_size = None
     for level, spec in reversed(input_specs.items()):
+      if spec[1] is None:
+        raise NotImplementedError("PAN not implemented for dynamic sizes." +\
+          " Specify static input spec.")
+      if feature_size == spec[1]:
+        continue
       inputs[level] = tf.keras.Input(shape=spec[1:])
-    
-    routeIdx = [i for i in list(reversed(input_specs.keys()))][:routes]
+      feature_size = spec[1]
+
+    routeIdx = [i for i in list(inputs.keys())][:routes]
     skips = []
     outputs = {}
     deep_route = inputs[routeIdx[0]]
@@ -123,6 +129,7 @@ class PAN(tf.keras.Model):
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
 
     outputs[routes-1] = self.conv(deep_route, filters=filters*2, kernels=3)
+    self._output_specs = {k: v.get_shape() for k, v in outputs.items()}
 
     super(PAN, self).__init__(inputs=inputs, outputs=outputs, **kwargs)
 
