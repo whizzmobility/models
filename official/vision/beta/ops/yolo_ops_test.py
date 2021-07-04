@@ -51,7 +51,7 @@ class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
 
     target_labels, target_bboxes = result
 
-    gt_label_sbbox = np.array([ 
+    groundtruth_label_small_bbox = np.array([ 
         74.5, 111.5,  69. ,  65. ,   1. ,   1. , 119.5, 121.5,   5. ,
         71. ,   1. ,   1. , 193.5, 246.5,   5. ,  17. ,   1. ,   1. ,
        379. , 244.5,  20. ,  37. ,   1. ,   1. , 144. , 255. ,  18. ,
@@ -65,7 +65,7 @@ class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
        334.5, 281. ,  35. , 106. ,   1. ,   1. , 157.5, 290. ,  45. ,
        130. ,   1. ,   1. , 207.5, 289.5, 415. , 147. ,   1. ,   1. ,
        280.5, 291. ,  39. , 142. ,   1. ,   1. ])
-    gt_sbboxes = np.array([
+    groundtruth_small_bbox = np.array([
         74.5, 111.5,  69. ,  65. , 180.5, 255.5,  13. ,  27. , 349. ,
        278. ,  16. ,  26. , 280.5, 291. ,  39. , 142. , 234.5, 283. ,
         35. , 110. , 210.5, 251. ,  17. ,  46. , 144. , 255. ,  18. ,
@@ -78,10 +78,10 @@ class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
     
     self.assertAllEqual(
       tf.boolean_mask(target_labels[0], tf.greater(target_labels[0], 0.5)), 
-      gt_label_sbbox)
+      groundtruth_label_small_bbox)
     self.assertAllEqual(
       tf.boolean_mask(target_bboxes[0], tf.greater(target_bboxes[0], 0.5)),
-      gt_sbboxes)
+      groundtruth_small_bbox)
     self.assertAllEqual(target_labels[0].shape, np.array([52, 52, 3, 85]))
     self.assertAllEqual(target_bboxes[0].shape, np.array([150, 4]))
     self.assertAllEqual(target_labels[1], tf.zeros([26, 26, 3, 85]))
