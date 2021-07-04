@@ -510,6 +510,22 @@ class YOLOv3Head(tf.keras.layers.Layer):
     self.num_classes = num_classes
     self.strides = strides
     self.xy_scale = xy_scale
+  
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
+    """Creates the variables of the classification head."""
+    self.heads = {}
+    for i in range(self.levels):
+      self.heads[str(i)] = layers.Conv2D(
+        filters=self.anchor_per_scale * (self.num_classes + 5),
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=self._config_dict['kernel_initializer'],
+        kernel_regularizer=self._config_dict['kernel_regularizer'],
+        bias_regularizer=self._config_dict['bias_regularizer'])
+
+    super(YOLOv3Head, self).build(input_shape)
 
   def call(self, 
            backbone_output: Mapping[str, tf.Tensor],
@@ -532,15 +548,9 @@ class YOLOv3Head(tf.keras.layers.Layer):
 
     for i, branch in enumerate(decoder_output.values()):
       x = branch
-      x = layers.Conv2D(
+      x = self.heads[str(i)](x)
       outputs['raw_outputs'][i] = x
-        kernel_size=1,
-        strides=1,
-        padding='same',
-        use_bias=False,
-        kernel_initializer=self._config_dict['kernel_initializer'],
-        kernel_regularizer=self._config_dict['kernel_regularizer'],
-        bias_regularizer=self._config_dict['bias_regularizer'])(x)
+
       x_shape = x.shape
       x = tf.reshape(x,
                     (x_shape[0], x_shape[1], x_shape[1], 3, 5 + self.num_classes))
