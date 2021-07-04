@@ -452,9 +452,11 @@ class YOLOv3Head(tf.keras.layers.Layer):
 
   def __init__(
       self,
+      levels: int,
       num_classes: int,
       input_size: int,
       strides: List,
+      anchor_per_scale: int,
       anchors: List,
       xy_scale: List,
       kernel_initializer='VarianceScaling',
@@ -468,8 +470,10 @@ class YOLOv3Head(tf.keras.layers.Layer):
     Args:
       num_classes: An `int` number of mask classification categories. The number
         of classes does not include background class.
+      levels: An `int` number of feature scales from decoder
       input_size: An `int` denoting dimension of input
       strides: A `List` with `int` denoting stride for bbox location prediction
+      anchor_per_scale: `int`, number of anchors per scale
       anchors: A `List` with `int` denoting width and height scaling for bbox
       xy_scale: A `List` with `int` denoting x, y scaling for bbox location prediction
         Length of list should correspond to number of branches.
@@ -482,9 +486,11 @@ class YOLOv3Head(tf.keras.layers.Layer):
     super(YOLOv3Head, self).__init__(**kwargs)
 
     self._config_dict = {
+        'levels': levels,
         'num_classes': num_classes,
         'input_size': input_size,
         'strides': strides,
+        'anchor_per_scale': anchor_per_scale,
         'anchors': anchors,
         'xy_scale': xy_scale,
         'kernel_initializer': kernel_initializer,
@@ -496,6 +502,11 @@ class YOLOv3Head(tf.keras.layers.Layer):
     else:
       self._bn_axis = 1
 
+    self.levels = levels
+    self.anchor_per_scale = anchor_per_scale
+    self.anchors = tf.constant(anchors, dtype=tf.float32)
+    self.anchors = tf.reshape(self.anchors, [
+      int(len(anchors)/self.anchor_per_scale/2), self.anchor_per_scale, 2])
     self.num_classes = num_classes
     self.strides = strides
     self.xy_scale = xy_scale
@@ -517,12 +528,12 @@ class YOLOv3Head(tf.keras.layers.Layer):
         scores predicted from input features.
     """
 
-    outputs = {}
+    outputs = {'raw_outputs': {}, 'predictions': {}}
 
     for i, branch in enumerate(decoder_output.values()):
       x = branch
       x = layers.Conv2D(
-        filters=3 * (self.num_classes + 5),
+      outputs['raw_outputs'][i] = x
         kernel_size=1,
         strides=1,
         padding='same',
@@ -545,13 +556,13 @@ class YOLOv3Head(tf.keras.layers.Layer):
 
       pred_xy = ((tf.sigmoid(raw_dxdy) * self.xy_scale[i]) - 0.5 * (self.xy_scale[i] - 1) + xy_grid) * \
                 self.strides[i]
-      pred_wh = (tf.exp(raw_dwdh) * self._config_dict['anchors'][i])
+      pred_wh = (tf.exp(raw_dwdh) * self.anchors[i])
       pred_xywh = tf.concat([pred_xy, pred_wh], axis=self._bn_axis)
 
       pred_conf = tf.sigmoid(raw_conf)
       pred_prob = tf.sigmoid(raw_prob)
 
-      outputs[i] = tf.concat([pred_xywh, pred_conf, pred_prob], axis=self._bn_axis)
+      outputs['predictions'][i] = tf.concat([pred_xywh, pred_conf, pred_prob], axis=self._bn_axis)
 
     return outputs
 

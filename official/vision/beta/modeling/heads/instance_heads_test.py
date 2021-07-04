@@ -136,25 +136,27 @@ class YOLOv3HeadTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
       (
-        3,
+        3, 3,
         256,
         [8, 16, 32], 
         [12,16, 19,36, 40,28, 36,75, 76,55, 72,146, 142,110, 192,243, 459,401], \
         [1.2, 1.1, 1.05]
       ), # yolo
       (
-        2,
+        2, 3,
         256,
         [16, 32], 
         [23,27, 37,58, 81,82, 81,82, 135,169, 344,319], \
         [1.05, 1.05]
       ) # yolotiny
   )
-  def test_forward(self, levels, input_size, strides, anchors, xy_scale):
+  def test_forward(self, levels, anchor_per_scale, input_size, strides, anchors, xy_scale):
     yolov3_head = instance_heads.YOLOv3Head(
+        levels=levels,
         num_classes=80,
         input_size=input_size,
         strides=strides,
+        anchor_per_scale=anchor_per_scale,
         anchors=anchors,
         xy_scale=xy_scale,
         kernel_initializer='VarianceScaling',
@@ -168,18 +170,24 @@ class YOLOv3HeadTest(parameterized.TestCase, tf.test.TestCase):
       for i in range(levels)}
     
     pred = yolov3_head({}, decoder_features)
-    for i in range(len(pred)):
+    for i in range(0, len(pred), 2):
+      self.assertAllEqual(
+        [1, size, size, 3*(80+5)],
+        pred['raw_outputs'][i].shape.as_list()
+      )
       self.assertAllEqual(
         [1, size, size, 3, 80+5],
-        pred[i].shape.as_list()
+        pred['predictions'][i].shape.as_list()
       )
       size /= 2
 
   def test_serialize_deserialize(self):
     yolov3_head = instance_heads.YOLOv3Head(
+        levels=3,
         num_classes=80,
         input_size=256,
         strides=[16, 32],
+        anchor_per_scale=3,
         anchors=[23,27, 37,58, 81,82, 81,82, 135,169, 344,319],
         xy_scale=[1.05, 1.05],
         kernel_initializer='VarianceScaling',
