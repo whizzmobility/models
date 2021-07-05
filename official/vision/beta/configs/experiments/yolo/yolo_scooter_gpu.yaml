@@ -37,8 +37,8 @@ task:
 
     global_batch_size: 1
     max_bbox_per_scale: 150
-    is_bbox_in_pixels: true
-    is_xywh: false
+    is_bbox_in_pixels: false
+    is_xywh: true
 
     dtype: 'float32'
     aug_rand_hflip: true
