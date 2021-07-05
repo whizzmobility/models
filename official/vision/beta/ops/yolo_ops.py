@@ -13,7 +13,8 @@ def resize_image_and_bboxes(image: tf.Tensor,
                             target_size: Tuple[int, int],
                             preserve_aspect_ratio: bool = False,
                             image_height: int = None,
-                            image_width: int = None):
+                            image_width: int = None,
+                            image_normalized: bool = True):
   """
   Args:
     image: `tf.Tensor` of shape (None, 5), denoting (x, y, w, h, class), non-normalized
@@ -22,6 +23,8 @@ def resize_image_and_bboxes(image: tf.Tensor,
     preserve_aspect_ratio: `bool`, true to preserve image aspect ratio
     image_height: `int`, height of image
     image_width: `int`, width of image
+  
+  !! assumes image is normalized to 0-1
   """
   target_height, target_width = target_size
   if image_height is None or image_width is None:
@@ -32,7 +35,14 @@ def resize_image_and_bboxes(image: tf.Tensor,
     clip_size = max(image_height, image_width)
     pad_height = (clip_size - image_height)//2
     pad_width = (clip_size - image_width)//2
-    image = tf.image.pad_to_bounding_box(image, pad_height, pad_width, clip_size, clip_size)
+
+    if image_normalized:
+      image = tf.pad(image, 
+        tf.constant([[pad_height, pad_height], [pad_width, pad_width], [0, 0]]), 
+        constant_values=0.5)
+    else:
+      image = tf.image.pad_to_bounding_box(
+        image, pad_height, pad_width, clip_size, clip_size)
 
     scale = min(scale_height, scale_width)
     bboxes *= scale
