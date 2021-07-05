@@ -2,40 +2,32 @@
 Referenced from https://github.com/hunglc007/tensorflow-yolov4-tflite.
 """
 
-from typing import List
+from typing import List, Tuple
 
-import numpy as np
 import tensorflow as tf
 
 
-def preprocess_true_boxes(bboxes,
+def preprocess_true_boxes(bboxes: tf.Tensor,
                           train_output_sizes: List[int],
                           anchor_per_scale: int,
                           num_classes: int,
                           max_bbox_per_scale: int,
                           strides: List[int],
-                          anchors: tf.Tensor,
-                          is_bbox_in_pixels=True,
-                          is_xywh=False):
+                          anchors: tf.Tensor):
   """
-  train_output_sizes: `List[int]`, dimension of each scaled feature map
-  anchor_per_scale: `int`, number of anchors per scale
-  num_classes: `int`, number of classes.
-  max_bbox_per_Scale: `int`, maximum number of bounding boxes per scale.
-  strides: `List[int]` of output strides, ratio of input to output resolution.
-  anchors: `tf.Tensor` of shape (None, anchor_per_scale, 2) denothing positions
-    of anchors
-  is_bbox_in_pixels: `bool`, true if bounding box values are in pixels
-  is_xywh: `bool`, true if bounding box values are in (x, y, width, height) format
+  Args:
+    bboxes: `tf.Tensor` of shape (None, 5), denoting (x, y, w, h, class), non-normalized
+    train_output_sizes: `List[int]`, dimension of each scaled feature map
+    anchor_per_scale: `int`, number of anchors per scale
+    num_classes: `int`, number of classes.
+    max_bbox_per_Scale: `int`, maximum number of bounding boxes per scale.
+    strides: `List[int]` of output strides, ratio of input to output resolution.
+      scaling of target feature depends on output sizes predicted by output strides
+    anchors: `tf.Tensor` of shape (None, anchor_per_scale, 2) denothing positions
+      of anchors
 
   !!! Assumes the images and boxes are preprocessed to fit image size.
-  Scaling will be according to output sizes predicted by output strides
   """
-  
-  if (is_bbox_in_pixels and is_xywh):
-    raise NotImplementedError('Processing for xywh in pixel format not implemented.')
-  if (not is_bbox_in_pixels and is_bbox_in_pixels):
-    raise NotImplementedError('Processing for box corners in float format not implemented')
 
   max_output_size = tf.reduce_max(train_output_sizes)
   label = tf.zeros((len(strides), max_output_size, max_output_size, anchor_per_scale, 5+num_classes))
@@ -45,15 +37,7 @@ def preprocess_true_boxes(bboxes,
   const = tf.constant([1.0], dtype=tf.float32)
 
   for bbox in bboxes:
-    if is_bbox_in_pixels:
-      bbox_coor = tf.cast(bbox[:4], tf.float32)
-      bbox_xywh = tf.concat([
-          (bbox_coor[2:] + bbox_coor[:2]) * 0.5,
-          bbox_coor[2:] - bbox_coor[:2],
-        ], axis=-1)
-    else:
-      bbox_xywh = tf.cast(bbox[:4], tf.float32)
-
+    bbox_xywh = tf.cast(bbox[:4], tf.float32)
     bbox_class_ind = tf.cast(bbox[4], tf.int64)
 
     smooth_onehot = tf.one_hot(

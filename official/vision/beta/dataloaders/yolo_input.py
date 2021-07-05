@@ -189,20 +189,24 @@ class Parser(parser.Parser):
       image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
 
     image = tf.clip_by_value(image, 0.0, 1.0)
+    boxes = box_ops.yxyx_to_xcycwh(boxes)
     boxes = tf.concat([boxes, data['classes'][:, tf.newaxis]], axis=-1)
 
-    result = yolo_ops.preprocess_true_boxes(
+    labels, bboxes = yolo_ops.preprocess_true_boxes(
       bboxes=boxes,
       train_output_sizes=self.train_output_sizes,
       anchor_per_scale=self.anchor_per_scale,
       num_classes=self.num_classes,
       max_bbox_per_scale=self.max_bbox_per_scale,
       strides=self.strides,
-      anchors=self.anchors,
-      is_bbox_in_pixels=self.is_bbox_in_pixels,
-      is_xywh=self.is_xywh)
+      anchors=self.anchors)
+    
+    targets = {
+      'labels': labels,
+      'bboxes': bboxes
+    }
 
-    return image, *result
+    return image, targets
 
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
