@@ -363,7 +363,7 @@ def build_yolo_model(
   head = instance_heads.YOLOv3Head(
       levels=len(decoder.output_specs),
       num_classes=model_config.num_classes,
-      input_size=head_config.input_size,
+      input_size=model_config.input_size,
       strides=head_config.strides,
       anchor_per_scale=head_config.anchor_per_scale,
       anchors=head_config.anchors,
