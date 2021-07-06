@@ -164,9 +164,16 @@ class Parser(parser.Parser):
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
     image, boxes = data['image'], data['boxes']
+    image /= 255
 
-    image, boxes = yolo_preprocess_ops.fit_preserve_aspect_ratio(
-        image, boxes, target_dim=self._input_size[0])
+    image, boxes = yolo_ops.resize_image_and_bboxes(
+      image=image, 
+      bboxes=boxes, 
+      target_size=self._input_size[:2], 
+      preserve_aspect_ratio=False,
+      image_height=data['height'],
+      image_width=data['width'],
+      image_normalized=True)
 
     if self._aug_rand_hflip:
       image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)

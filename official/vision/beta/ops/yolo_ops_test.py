@@ -12,6 +12,37 @@ from official.vision.beta.ops import yolo_ops
 
 class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
   
+  @parameterized.parameters(
+    (
+      [0.456250, 0.415104, 0.176563, 0.171875], # xywh in normalised form
+      [84.26663, 94.19994, 128.26663, 139.40007], # yxyx in pixels
+      960, 1280, (256, 256), False
+    ),
+    (
+      [0.464453, 0.517188, 0.249219, 0.065625], # xywh in normalised form
+      [253.00009, 86.99993, 265.6001, 150.8], # yxyx in pixels
+      960, 1280, (256, 256), True
+    )
+  )
+  def testResizeImageBoxes(self, 
+                           bbox, 
+                           bbox_result, 
+                           height, 
+                           width, 
+                           target_dim, 
+                           preserve_aspect_ratio):
+    image = tf.random.uniform((height, width, 3))
+    bbox = [bbox[0] * width, bbox[1] * height, bbox[2] * width, bbox[3] * height]
+    bbox = box_ops.xcycwh_to_yxyx(bbox)
+    new_image, new_bbox = yolo_ops.resize_image_and_bboxes(
+      image=image, 
+      bboxes=bbox, 
+      target_size=target_dim, 
+      preserve_aspect_ratio=preserve_aspect_ratio)
+    
+    self.assertAllClose(new_bbox, bbox_result)
+    self.assertAllEqual(new_image.shape[:2], target_dim)
+
   def testYoloPreprocessTrueBoxes(self):
     bboxes = tf.constant([
         [ 40,  79, 109, 144,  74],
