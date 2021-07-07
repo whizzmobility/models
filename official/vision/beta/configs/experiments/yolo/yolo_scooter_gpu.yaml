@@ -1,0 +1,99 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  # mixed_precision_dtype: 'float32'
+
+  num_gpus: 1
+
+task:
+  model:
+    num_classes: 6
+    input_size: [256, 256, 3]
+    backbone:
+      type: 'hardnet'
+      hardnet:
+        model_id: 70
+    decoder:
+      type: 'pan'
+      pan:
+        levels: 3
+    head:
+      anchor_per_scale: 3
+      strides: [16, 32, 64]  # depends on downsampling on model side
+      anchors: [12,16, 19,36, 40,28, 36,75, 76,55, 72,146, 142,110, 192,243, 459,401]
+      xy_scale: [1.2, 1.1, 1.05]
+    norm_activation:
+      activation: 'relu'
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+  losses:
+    l2_weight_decay: 0.0001
+    iou_loss_thres: 0.5
+    class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  train_data:
+    output_size: [256, 256]
+    input_path: 'D:/data/whizz_tf/detect_env*'
+    is_training: true
+
+    global_batch_size: 1
+    max_bbox_per_scale: 150
+    is_bbox_in_pixels: false
+    is_xywh: true
+
+    dtype: 'float32'
+    aug_rand_hflip: true
+    aug_jitter_im: 0.1
+    aug_rand_saturation: true
+    aug_rand_brightness: true
+    aug_rand_zoom: true
+    aug_rand_hue: true
+    aug_policy: randaug
+    randaug_magnitude: 5 # 5-10 for image classification
+    randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
+  validation_data:
+    output_size: [256, 256]
+    input_path: 'D:/data/whizz_tf/detect_env*'
+    is_training: true
+
+    global_batch_size: 1
+    max_bbox_per_scale: 150
+    is_bbox_in_pixels: false
+    is_xywh: true
+
+    dtype: 'float32'
+  # init_checkpoint: '/home/whizz/experiments/imagenet/imagenet_hardnet_gpu_256x256_randaug/ckpt-2502000'
+  init_checkpoint_modules: 'backbone'
+trainer:
+  optimizer_config:
+    learning_rate:
+      polynomial:
+
+        decay_steps: 20     # 2.5-5 * train_steps_per_epoch (train_steps for poly)
+        initial_learning_rate: 0.002
+        
+        end_learning_rate: 0.0
+        power: 0.9
+      type: polynomial
+    optimizer:
+      sgd:
+        momentum: 0.9
+      type: sgd
+    warmup:
+      linear:
+        name: linear
+        warmup_learning_rate: 0
+
+        warmup_steps: 2     # 5 * train_steps_per_epoch
+
+      type: linear
+
+  steps_per_loop: 2         # train_steps_per_epoch
+  summary_interval: 2       # 2 * train_steps_per_epoch
+  train_steps: 20           # epochs * train steps_per_epoch
+  validation_interval: 2    # train_steps_per_epoch
+  validation_steps: 20      # val_steps_per_epoch
+  checkpoint_interval: 2    # 2 * train_steps_per_epoch
+
+
+  best_checkpoint_eval_metric: ''
+  continuous_eval_timeout: 3600
