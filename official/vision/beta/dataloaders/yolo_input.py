@@ -7,13 +7,15 @@ import numpy as np
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import augment, preprocess_ops, yolo_ops
-from official.vision.beta.projects.yolo.ops import preprocess_ops as yolo_preprocess_ops
+from official.vision.beta.projects.yolo.ops import box_ops, preprocess_ops as yolo_preprocess_ops
 
 
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for yolo task."""
 
-  def __init__(self, is_bbox_in_pixels=False):
+  def __init__(self, 
+               is_bbox_in_pixels=False, 
+               is_xywh=False):
     self._keys_to_features = {
         'image/encoded': tf.io.FixedLenFeature((), tf.string, default_value=''),
         'image/height': tf.io.FixedLenFeature((), tf.int64, default_value=0),
@@ -26,6 +28,7 @@ class Decoder(decoder.Decoder):
     }
 
     self.is_bbox_in_pixels = is_bbox_in_pixels
+    self.is_xywh = is_xywh
   
   def _decode_image(self, parsed_tensors):
     """Decodes the image and set its static shape."""
@@ -45,8 +48,12 @@ class Decoder(decoder.Decoder):
       y = y * tf.cast(parsed_tensors['image/height'], tf.float32)
       w = w * tf.cast(parsed_tensors['image/width'], tf.float32)
       h = h * tf.cast(parsed_tensors['image/height'], tf.float32)
+    
+    bbox = tf.stack([x, y, w, h], axis=-1)
+    if self.is_xywh:
+      bbox = box_ops.xcycwh_to_yxyx(bbox)
 
-    return tf.stack([x, y, w, h], axis=-1)
+    return bbox
 
   def decode(self, serialized_example):
     parsed_tensors = tf.io.parse_single_example(
@@ -86,8 +93,6 @@ class Parser(parser.Parser):
                max_bbox_per_scale: int,
                strides: List,
                anchors: List,
-               is_bbox_in_pixels: bool,
-               is_xywh: bool,
                aug_policy: Optional[str] = None,
                randaug_magnitude: Optional[int] = 10,
                randaug_available_ops: Optional[List[str]] = None,
@@ -99,6 +104,8 @@ class Parser(parser.Parser):
                aug_rand_hue=True,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
+    !!! Augmentation ops assumes that boxes are yxyx format, non-normalized
+      (top left, bottom right coords) in pixels.
 
     Args:
       output_size: `Tensor` or `list` for [height, width] of output image. The
@@ -110,8 +117,6 @@ class Parser(parser.Parser):
       strides: `List[int]` of output strides, ratio of input to output resolution.
       anchors: `tf.Tensor` of shape (None, anchor_per_scale, 2) denothing positions
         of anchors
-      is_bbox_in_pixels: `bool`, true if bounding box values are in pixels
-      is_xywh: `bool`, true if bounding box values are in (x, y, width, height) format
       aug_policy: `str`, augmentation policies. None or 'randaug'. TODO support 'autoaug'
       randaug_magnitude: `int`, magnitude of the randaugment policy.
       randaug_available_ops: `List[str]`, specify augmentations for randaug
@@ -135,9 +140,8 @@ class Parser(parser.Parser):
     self.max_bbox_per_scale = max_bbox_per_scale
     self.strides = strides
     self.anchors = tf.constant(anchors, dtype=tf.float32)
-    self.anchors = tf.reshape(self.anchors, [int(len(anchors)/6), 3, 2])
-    self.is_bbox_in_pixels = is_bbox_in_pixels
-    self.is_xywh = is_xywh
+    self.anchors = tf.reshape(self.anchors, [
+      int(len(anchors)/self.anchor_per_scale/2), self.anchor_per_scale, 2])
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
@@ -162,7 +166,10 @@ class Parser(parser.Parser):
     self._dtype = dtype
 
   def _parse_train_data(self, data):
-    """Parses data for training and evaluation."""
+    """Parses data for training and evaluation.
+    !!! All augmentations and transformations are on bboxes with format
+      (ymin, xmin, ymax, xmax). Required to do the appropriate transformations.
+    """
     image, boxes = data['image'], data['boxes']
     image /= 255
 
@@ -175,10 +182,12 @@ class Parser(parser.Parser):
       image_width=data['width'],
       image_normalized=True)
 
-    if self._aug_rand_hflip:
-      image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
+    #TODO(ruien): this only works on normalized bboxes
+    # if self._aug_rand_hflip:
+    #   image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
     
     #TODO(ruien): implement random zoom
+    #TODO(ruien): implement jitter boxes
 
     if self._aug_jitter_im != 0.0:
       image, boxes = yolo_preprocess_ops.random_translate(
@@ -196,20 +205,24 @@ class Parser(parser.Parser):
       image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
 
     image = tf.clip_by_value(image, 0.0, 1.0)
+    boxes = box_ops.yxyx_to_xcycwh(boxes)
     boxes = tf.concat([boxes, data['classes'][:, tf.newaxis]], axis=-1)
 
-    result = yolo_ops.preprocess_true_boxes(
+    labels, bboxes = yolo_ops.preprocess_true_boxes(
       bboxes=boxes,
       train_output_sizes=self.train_output_sizes,
       anchor_per_scale=self.anchor_per_scale,
       num_classes=self.num_classes,
       max_bbox_per_scale=self.max_bbox_per_scale,
       strides=self.strides,
-      anchors=self.anchors,
-      is_bbox_in_pixels=self.is_bbox_in_pixels,
-      is_xywh=self.is_xywh)
+      anchors=self.anchors)
+    
+    targets = {
+      'labels': labels,
+      'bboxes': bboxes
+    }
 
-    return image, *result
+    return image, targets
 
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""

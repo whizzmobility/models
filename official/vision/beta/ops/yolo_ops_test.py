@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 from official.vision.beta.ops import yolo_ops
+from official.vision.beta.projects.yolo.ops import box_ops
 
 
 class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
@@ -63,7 +64,13 @@ class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
         [369, 226, 389, 263,   0],
         [135, 225, 180, 355,   0],
         [171, 229, 185, 311,   0],
-        [  0, 216, 415, 363,   0]])
+        [  0, 216, 415, 363,   0]]) # x1, y1, x2, y2, class
+    
+    classes = bboxes[:, 4]
+    bboxes = tf.stack([bboxes[:, 1], bboxes[:, 0], bboxes[:, 3], bboxes[:, 2]], axis=-1) #yxyx
+    bboxes = box_ops.yxyx_to_xcycwh(tf.cast(bboxes, tf.float32))
+    inputs = tf.concat([bboxes, tf.cast(classes[:, tf.newaxis], tf.float32)], axis=-1)
+    
     train_output_sizes=tf.constant([52,26,13])
     anchor_per_scale = 3
     num_classes = 80
@@ -72,13 +79,13 @@ class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
     anchors = tf.constant([[[ 12,  16], [ 19,  36], [ 40,  28]],[[ 36,  75], [ 76,  55], [ 72, 146]],[[142, 110], [192, 243], [459, 401]]])
 
     result = yolo_ops.preprocess_true_boxes(
-      bboxes=bboxes,
+      bboxes=inputs,
       train_output_sizes=train_output_sizes,
       anchor_per_scale=anchor_per_scale,
       num_classes=num_classes,
       max_bbox_per_scale=max_bbox_per_scale,
       strides=strides,
-      anchors=anchors)
+      anchors=anchors) # only takes xywh
 
     target_labels, target_bboxes = result
 
@@ -107,10 +114,10 @@ class YoloOpsTest(parameterized.TestCase, tf.test.TestCase):
         37. , 157.5, 290. ,  45. , 130. , 178. , 270. ,  14. ,  82. ,
        207.5, 289.5, 415. , 147. ])
     
-    self.assertAllEqual(
+    self.assertAllClose(
       tf.boolean_mask(target_labels[0], tf.greater(target_labels[0], 0.5)), 
       groundtruth_label_small_bbox)
-    self.assertAllEqual(
+    self.assertAllClose(
       tf.boolean_mask(target_bboxes[0], tf.greater(target_bboxes[0], 0.5)),
       groundtruth_small_bbox)
     self.assertAllEqual(target_labels[0].shape, np.array([52, 52, 3, 85]))
