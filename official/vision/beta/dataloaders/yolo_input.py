@@ -239,5 +239,39 @@ class Parser(parser.Parser):
     return image, targets
 
   def _parse_eval_data(self, data):
-    """Parses data for training and evaluation."""
-    pass
+    """Parses data for evaluation.
+    !!! All augmentations and transformations are on bboxes with format
+      (ymin, xmin, ymax, xmax). Required to do the appropriate transformations.
+    !!! Images are supposed to be in RGB format
+    """
+    image, boxes = data['image'], data['boxes']
+    image /= 255
+
+    image, boxes = yolo_ops.resize_image_and_bboxes(
+      image=image, 
+      bboxes=boxes, 
+      target_size=self._input_size[:2], 
+      preserve_aspect_ratio=False,
+      image_height=data['height'],
+      image_width=data['width'],
+      image_normalized=True)
+
+    image = tf.clip_by_value(image, 0.0, 1.0)
+    boxes = box_ops.yxyx_to_xcycwh(boxes)
+    boxes = tf.concat([boxes, data['classes'][:, tf.newaxis]], axis=-1)
+
+    labels, bboxes = yolo_ops.preprocess_true_boxes(
+      bboxes=boxes,
+      train_output_sizes=self.train_output_sizes,
+      anchor_per_scale=self.anchor_per_scale,
+      num_classes=self.num_classes,
+      max_bbox_per_scale=self.max_bbox_per_scale,
+      strides=self.strides,
+      anchors=self.anchors)
+    
+    targets = {
+      'labels': labels,
+      'bboxes': bboxes
+    }
+
+    return image, targets
