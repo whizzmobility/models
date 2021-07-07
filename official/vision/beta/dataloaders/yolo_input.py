@@ -6,8 +6,9 @@ import numpy as np
 
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
-from official.vision.beta.ops import augment, preprocess_ops, yolo_ops
-from official.vision.beta.projects.yolo.ops import box_ops, preprocess_ops as yolo_preprocess_ops
+from official.vision.beta.ops import augment, yolo_ops
+from official.vision.beta.projects.yolo.ops import box_ops
+from official.vision.beta.projects.yolo.ops import preprocess_ops as yolo_preprocess_ops
 
 
 class Decoder(decoder.Decoder):
@@ -169,6 +170,7 @@ class Parser(parser.Parser):
     """Parses data for training and evaluation.
     !!! All augmentations and transformations are on bboxes with format
       (ymin, xmin, ymax, xmax). Required to do the appropriate transformations.
+    !!! Images are supposed to be in RGB format
     """
     image, boxes = data['image'], data['boxes']
     image /= 255
@@ -205,11 +207,11 @@ class Parser(parser.Parser):
       image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
 
     image = tf.clip_by_value(image, 0.0, 1.0)
-    boxes = box_ops.yxyx_to_xcycwh(boxes)
-    boxes = tf.concat([boxes, data['classes'][:, tf.newaxis]], axis=-1)
+    bbox_labels = box_ops.yxyx_to_xcycwh(boxes)
+    bbox_labels = tf.concat([bbox_labels, data['classes'][:, tf.newaxis]], axis=-1)
 
-    labels, bboxes = yolo_ops.preprocess_true_boxes(
-      bboxes=boxes,
+    labels, bbox_labels = yolo_ops.preprocess_true_boxes(
+      bboxes=bbox_labels,
       train_output_sizes=self.train_output_sizes,
       anchor_per_scale=self.anchor_per_scale,
       num_classes=self.num_classes,
@@ -219,7 +221,8 @@ class Parser(parser.Parser):
     
     targets = {
       'labels': labels,
-      'bboxes': bboxes
+      'bboxes': bbox_labels,
+      'raw_bboxes': boxes
     }
 
     return image, targets
