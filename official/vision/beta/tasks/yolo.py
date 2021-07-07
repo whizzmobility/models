@@ -49,6 +49,7 @@ class YoloTask(base_task.Task):
     if not self.task_config.init_checkpoint:
       return
 
+    # check if path supplied is a file or directory of checkpoints
     ckpt_dir_or_file = self.task_config.init_checkpoint
     if tf.io.gfile.isdir(ckpt_dir_or_file):
       ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
