@@ -14,6 +14,7 @@ from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import yolo_input
 from official.vision.beta.losses import yolo_losses
 from official.vision.beta.modeling import factory
+from official.vision.beta.ops import box_ops
 from orbit.utils import SummaryManager
 
 
@@ -158,11 +159,15 @@ class YoloTask(base_task.Task):
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
 
-    return total_loss
+    return total_loss, total_giou_loss, total_conf_loss, total_prob_loss
 
   def build_metrics(self, training: bool = True):
     """Gets streaming metrics for training/validation."""
     metrics = []
+    metric_names = ['giou_loss', 'conf_loss', 'prob_loss']
+    for name in metric_names:
+      metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
+
     return metrics
 
   def train_step(self,
@@ -189,9 +194,12 @@ class YoloTask(base_task.Task):
       features = strategy.experimental_split_to_logical_devices(
           features, input_partition_dims)
     
-    # TODO(ruien): show visualise some boxes
+    input_shape = self.task_config.model.input_size[:2]
+    normalized_boxes = box_ops.normalize_boxes(labels['raw_bboxes'], input_shape)
+    bbox_color = tf.constant([[1.0, 1.0, 0.0, 1.0]])
     self.image_summary_manager.write_summaries({
-      'input_images': features
+      'input_images': features,
+      'bbox': tf.image.draw_bounding_boxes(features, normalized_boxes, bbox_color)
     })
     
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
@@ -203,8 +211,8 @@ class YoloTask(base_task.Task):
           lambda x: tf.cast(x, tf.float32), outputs)
 
       # Computes per-replica loss.
-      loss = self.build_losses(model_outputs=outputs, labels=labels,
-                               aux_losses=model.losses)
+      loss, giou_loss, conf_loss, prob_loss = self.build_losses(
+          model_outputs=outputs, labels=labels, aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
       scaled_loss = loss / num_replicas
@@ -223,9 +231,16 @@ class YoloTask(base_task.Task):
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: loss}
+    all_losses = {
+      'giou_loss': giou_loss,
+      'conf_loss': conf_loss,
+      'prob_loss': prob_loss
+    }
     if metrics:
-      self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
+      # process metrics uses labels and outputs, metrics.mean uses values only
+      for m in metrics:
+        m.update_state(all_losses[m.name])
+        logs.update({m.name: m.result()})
 
     return logs
 
