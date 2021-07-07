@@ -258,7 +258,33 @@ class YoloTask(base_task.Task):
     Returns:
       A dictionary of logs.
     """
-    pass
+    features, labels = inputs
+
+    input_partition_dims = self.task_config.train_input_partition_dims
+    if input_partition_dims:
+      strategy = tf.distribute.get_strategy()
+      features = strategy.experimental_split_to_logical_devices(
+          features, input_partition_dims)
+    
+    outputs = self.inference_step(features, model)
+    outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+
+    loss, giou_loss, conf_loss, prob_loss = self.build_losses(
+          model_outputs=outputs, labels=labels, aux_losses=model.losses)
+
+    logs = {self.loss: loss}
+    all_losses = {
+      'giou_loss': giou_loss,
+      'conf_loss': conf_loss,
+      'prob_loss': prob_loss
+    }
+    if metrics:
+      # process metrics uses labels and outputs, metrics.mean uses values only
+      for m in metrics:
+        m.update_state(all_losses[m.name])
+        logs.update({m.name: m.result()})
+
+    return logs
 
   def inference_step(self, inputs: tf.Tensor, model: tf.keras.Model):
     """Performs the forward step."""
