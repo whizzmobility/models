@@ -73,12 +73,12 @@ class YoloLoss(tf.keras.losses.Loss):
     conv_raw_conf = conv[:, :, :, :, 4:5]
     conv_raw_prob = conv[:, :, :, :, 5:]
 
-    pred_xywh     = pred[:, :, :, :, 0:4]
-    pred_conf     = pred[:, :, :, :, 4:5]
+    pred_xywh     = pred[:, :, :, :, 0:4] # bbox prediction in center x, center y, width, height
+    pred_conf     = pred[:, :, :, :, 4:5] # confidence
 
-    label_xywh    = label[:, :, :, :, 0:4]
-    respond_bbox  = label[:, :, :, :, 4:5]
-    label_prob    = label[:, :, :, :, 5:]
+    label_xywh    = label[:, :, :, :, 0:4] # bbox in center x, center y, width, height
+    respond_bbox  = label[:, :, :, :, 4:5] # confidence
+    label_prob    = label[:, :, :, :, 5:]  # one-hot labels
 
     giou = tf.expand_dims(box_ops.compute_giou(pred_xywh, label_xywh)[1], axis=-1)
 
