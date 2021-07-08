@@ -15,12 +15,15 @@
 # Lint as: python3
 """Semantic segmentation input and model functions for serving/inference."""
 
+from typing import Callable
+
 import tensorflow as tf
+import numpy as np
 
 from official.vision.beta.modeling import factory
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.ops.colormaps import get_colormap
-from official.vision.beta.serving import export_base
+from official.vision.beta.serving import export_base, run_lib
 
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
@@ -48,7 +51,7 @@ class SegmentationModule(export_base.ExportModule):
         l2_regularizer=None)
 
   def _build_inputs(self, image):
-    """Builds classification model inputs for serving."""
+    """Builds segmentation model inputs for serving."""
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image,
@@ -69,7 +72,10 @@ class SegmentationModule(export_base.ExportModule):
     Args:
       images: uint8 Tensor of shape [batch_size, None, None, 3]
     Returns:
-      Tensor holding classification output logits.
+      `mask`: Tensor holding segmentation output logits, or class mask according to
+        self._argmax_outputs
+      `mask_visualised`: Tensor holding visualised class mask. Assumes output is 
+        argmaxed.
     """
     # Removing nest.map_structure, as it adds a while node that is not static
     if images.shape[0] > 1:
@@ -105,3 +111,59 @@ class SegmentationModule(export_base.ExportModule):
       processed_outputs['mask_visualised'] = mask
 
     return processed_outputs
+
+  def run(self,
+          image_path_glob: str,
+          output_dir: str,
+          preprocess_fn: Callable[[tf.Tensor], tf.Tensor],
+          inference_fn: Callable[[tf.Tensor], tf.Tensor],
+          visualise: bool = True,
+          stitch_original: bool = True,
+          save_logits_bin: bool = False):
+    """Runs inference graph for the model, for given directory of images
+    
+    Args:
+      image_path_glob: `str`, path pattern for images
+      output_dir: `str`, path to output logs
+      preprocess_fn: `Callable`, takes image tensor of shape (1, height, 
+        width, channels), produces altered image tensor of same shape
+      inference_fn: `Callable`, takes image tensor of shape (1, height, 
+        width, channels), outputs Tensor of shape [batch_size, None, None, 3]
+      visualise: `bool`, flag to use colormap
+      stitch_original: `bool`, flag to stitch original image by the side
+      save_logits_bin: `bool`, flag to save tensors and binary files
+    """
+
+    cmap = get_colormap(cmap_type='cityscapes').numpy()
+    dataset = run_lib.inference_dataset(image_path_glob=image_path_glob,
+                                        output_dir=output_dir,
+                                        preprocess_fn=preprocess_fn)
+    
+    for image, img_filename, save_basename in dataset:
+
+      logits = inference_fn(image)
+      mask, visualised_mask = logits
+
+      if save_logits_bin:
+        run_lib.write_tensor_as_bin(tensor=image, 
+                                    output_path=save_basename + '_input')
+        run_lib.write_tensor_as_bin(tensor=mask, 
+                                    output_path=save_basename + '_mask')
+        run_lib.write_tensor_as_bin(tensor=visualised_mask, 
+                                    output_path=save_basename + '_visualised_mask')
+
+      mask = np.squeeze(mask)
+      if mask.ndim > 2:
+          mask = np.argmax(mask, axis=-1).astype(np.uint8)
+
+      if visualise:
+        seg_map = cmap[mask]
+
+      if stitch_original:
+        image = tf.image.resize(image, seg_map.shape[:2])
+        image = np.squeeze(image.numpy()).astype(np.uint8)
+        seg_map = np.hstack((image, seg_map))
+      
+      encoded_seg_map = tf.image.encode_png(seg_map)
+      tf.io.write_file(save_basename + '.png', encoded_seg_map)
+      print("Visualised %s, saving result at %s" %(img_filename, save_basename + '.png'))
