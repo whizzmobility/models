@@ -173,11 +173,11 @@ class YOLOv3HeadTest(parameterized.TestCase, tf.test.TestCase):
     for i in range(0, len(pred), 2):
       self.assertAllEqual(
         [1, size, size, 3*(80+5)],
-        pred['raw_outputs'][i].shape.as_list()
+        pred['raw_outputs'][str(i)].shape.as_list()
       )
       self.assertAllEqual(
         [1, size, size, 3, 80+5],
-        pred['predictions'][i].shape.as_list()
+        pred['predictions'][str(i)].shape.as_list()
       )
       size /= 2
 

@@ -549,9 +549,9 @@ class YOLOv3Head(tf.keras.layers.Layer):
     for i, branch in enumerate(decoder_output.values()):
       x = branch
       x = self.heads[str(i)](x)
-      outputs['raw_outputs'][i] = x
+      outputs['raw_outputs'][str(i)] = x
 
-      x_shape = x.shape
+      x_shape = tf.shape(x)
       x = tf.reshape(x,
                     (x_shape[0], x_shape[1], x_shape[1], 3, 5 + self.num_classes))
 
@@ -564,15 +564,16 @@ class YOLOv3Head(tf.keras.layers.Layer):
       xy_grid = tf.tile(xy_grid, [tf.shape(x)[0], 1, 1, 3, 1])
       xy_grid = tf.cast(xy_grid, tf.float32)
 
-      pred_xy = ((tf.sigmoid(raw_dxdy) * self.xy_scale[i]) - 0.5 * (self.xy_scale[i] - 1) + xy_grid) * \
-                self.strides[i]
+      pred_xy = ((tf.sigmoid(raw_dxdy) * self.xy_scale[i]) - 0.5 * \
+                (self.xy_scale[i] - 1) + xy_grid) * self.strides[i]
       pred_wh = (tf.exp(raw_dwdh) * self.anchors[i])
       pred_xywh = tf.concat([pred_xy, pred_wh], axis=self._bn_axis)
 
       pred_conf = tf.sigmoid(raw_conf)
       pred_prob = tf.sigmoid(raw_prob)
 
-      outputs['predictions'][i] = tf.concat([pred_xywh, pred_conf, pred_prob], axis=self._bn_axis)
+      outputs['predictions'][str(i)] = tf.concat(
+        [pred_xywh, pred_conf, pred_prob], axis=self._bn_axis)
 
     return outputs
 
