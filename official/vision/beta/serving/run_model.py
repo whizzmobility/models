@@ -37,7 +37,7 @@ def main(_):
 
   def inference_fn(images):
     outputs = export_module.serve(images)
-    return [v.numpy() for k, v in outputs.items()]
+    return [v for k, v in outputs.items()]
   
   export_module.run(image_path_glob=FLAGS.image_path_glob, 
                     output_dir=FLAGS.output_dir,

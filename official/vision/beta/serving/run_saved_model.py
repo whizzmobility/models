@@ -32,7 +32,7 @@ def main(_):
   model_fn = imported.signatures['serving_default']
 
   def inference_fn(image):
-    return [v.numpy() for k, v in model_fn(image).items()]
+    return [v for k, v in model_fn(image).items()]
   
   export_module.run(image_path_glob=FLAGS.image_path_glob, 
                     output_dir=FLAGS.output_dir,

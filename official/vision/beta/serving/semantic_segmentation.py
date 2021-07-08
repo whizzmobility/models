@@ -152,7 +152,7 @@ class SegmentationModule(export_base.ExportModule):
         run_lib.write_tensor_as_bin(tensor=visualised_mask, 
                                     output_path=save_basename + '_visualised_mask')
 
-      mask = np.squeeze(mask)
+      mask = tf.squeeze(mask).numpy()
       if mask.ndim > 2:
           mask = np.argmax(mask, axis=-1).astype(np.uint8)
 
