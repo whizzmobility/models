@@ -3,47 +3,48 @@ r"""Vision models run tflite model for inference"""
 from absl import app
 from absl import flags
 import tensorflow as tf
-import cv2
 
 from official.vision.beta.serving import run_lib
+from official.common import flags as tfm_flags
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('model_path', None, 'Saved model directory.')
-flags.DEFINE_string('image_path_glob', None, 'Test image directory.')
-flags.DEFINE_string('output_dir', None, 'Output directory.')
-flags.DEFINE_boolean('visualise', None, 'Flag to visualise mask.')
-flags.DEFINE_boolean('stitch_original', None, 'Flag to stitch image at the side.')
-flags.DEFINE_boolean('save_logits_bin', None, 'Flag to save logits bin.')
+flags.DEFINE_string('model_path', None, 'Tflite model path.')
 
 
 def main(_):
 
+  export_module = run_lib.get_export_module(experiment=FLAGS.experiment,
+                                            batch_size=FLAGS.batch_size)
+
   interpreter = tf.lite.Interpreter(model_path=FLAGS.model_path)
   interpreter.allocate_tensors()
   input_details = interpreter.get_input_details()
-  input_type = input_details[0]['dtype']
-  input_image_dims = input_details[0]['shape'][1:3].tolist()
   output_details = interpreter.get_output_details()
   
   def inference_fn(image):
     interpreter.set_tensor(input_details[0]['index'], image)
     interpreter.invoke()
-    return interpreter.get_tensor(output_details[0]['index'])
+    outputs = []
+    for i in range(len(output_details)):
+      outputs.append(interpreter.get_tensor(output_details[i]['index']))
+    return outputs
   
   def preprocess_fn(image):
     image = tf.image.resize(image, input_details[0]['shape'][1:3])
-    image = tf.cast(image, dtype=tf.int32)
+    image = tf.cast(image, dtype=tf.uint8)
     return image
 
-  run_lib.run_inference(FLAGS.image_path_glob, 
-                        FLAGS.output_dir,
-                        inference_fn, 
-                        FLAGS.visualise, 
-                        FLAGS.stitch_original,
-                        FLAGS.save_logits_bin,
-                        preprocess_fn)
+  export_module.run(image_path_glob=FLAGS.image_path_glob, 
+                    output_dir=FLAGS.output_dir,
+                    preprocess_fn=preprocess_fn,
+                    inference_fn=inference_fn, 
+                    visualise=FLAGS.visualise, 
+                    stitch_original=FLAGS.stitch_original,
+                    save_logits_bin=FLAGS.save_logits_bin)
 
 
 if __name__ == '__main__':
+  tfm_flags.define_flags()
+  run_lib.define_flags()
   app.run(main)

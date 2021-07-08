@@ -5,36 +5,39 @@ from absl import flags
 import tensorflow as tf
 
 from official.vision.beta.serving import run_lib
+from official.common import flags as tfm_flags
 
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('saved_model_dir', None, 'Saved model directory.')
-flags.DEFINE_string('image_path_glob', None, 'Test image directory.')
-flags.DEFINE_string('output_dir', None, 'Output directory.')
-flags.DEFINE_boolean('visualise', None, 'Flag to visualise mask.')
-flags.DEFINE_boolean('stitch_original', None, 'Flag to stitch image at the side.')
-flags.DEFINE_boolean('save_logits_bin', None, 'Flag to save logits bin.')
 
 
 def main(_):
 
+  export_module = run_lib.get_export_module(experiment=FLAGS.experiment,
+                                            batch_size=FLAGS.batch_size)
+
   imported = tf.saved_model.load(FLAGS.saved_model_dir)
   model_fn = imported.signatures['serving_default']
 
-  def inference_fn(image):
-    return model_fn(image)['predicted_masks']
-  
   def preprocess_fn(image):
-    return tf.cast(image, dtype=tf.int32)
+    image = tf.image.resize(image, export_module._input_image_size)
+    image = tf.cast(image, dtype=tf.uint8)
+    return image
+
+  def inference_fn(image):
+    return [v for k, v in model_fn(image).items()]
   
-  run_lib.run_inference(FLAGS.image_path_glob, 
-                        FLAGS.output_dir,
-                        inference_fn, 
-                        FLAGS.visualise, 
-                        FLAGS.stitch_original,
-                        FLAGS.save_logits_bin,
-                        preprocess_fn)
+  export_module.run(image_path_glob=FLAGS.image_path_glob, 
+                    output_dir=FLAGS.output_dir,
+                    preprocess_fn=preprocess_fn,
+                    inference_fn=inference_fn, 
+                    visualise=FLAGS.visualise, 
+                    stitch_original=FLAGS.stitch_original,
+                    save_logits_bin=FLAGS.save_logits_bin)
 
 
 if __name__ == '__main__':
+  tfm_flags.define_flags()
+  run_lib.define_flags()
   app.run(main)

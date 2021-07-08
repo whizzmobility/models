@@ -1,35 +1,58 @@
 r"""Vision models run inference utility function."""
 
+from typing import Callable, Optional
 import os
 import glob
 
-import numpy as np
+from absl import flags
 import tensorflow as tf
 
-from official.vision.beta.ops import preprocess_ops
-from official.vision.beta.ops.colormaps import get_colormap
+# from official.common import registry_imports  # pylint: disable=unused-import
+from official.core import exp_factory
+from official.modeling import hyperparams
+from official.vision.beta import configs
+from official.modeling.multitask import configs as multi_cfg
+from official.vision.beta.serving import detection
+from official.vision.beta.serving import image_classification
+from official.vision.beta.serving import semantic_segmentation
+from official.vision.beta.serving import yolo
+from official.vision.beta.serving import multitask
 
 
-def run_inference(image_path_glob,
-                  output_dir,
-                  inference_fn,
-                  visualise,
-                  stitch_original,
-                  save_logits_bin,
-                  preprocess_fn=None):
-  """Runs inference graph for the model, for given directory of images
+def define_flags():
+  """Defines flags specific for running inferences."""
+  # inference model flags
+  flags.DEFINE_integer('batch_size', 1, 'The batch size.')
+
+  # inference data flags
+  flags.DEFINE_string('image_path_glob', None, 'Test image directory.')
+  flags.DEFINE_string('output_dir', None, 'Output directory.')
+  flags.DEFINE_boolean('save_logits_bin', None, 'Flag to save logits bin.')
+
+  # optional flags, supplied as kwargs
+  flags.DEFINE_boolean('visualise', None, '(Segmentation) Flag to visualise mask.')
+  flags.DEFINE_boolean('stitch_original', None, '(Segmentation) Flag to stitch image at the side.')
+  flags.DEFINE_string('class_names_path', None, '(Yolo) Txt file with class names.')
+
+
+def inference_dataset(image_path_glob: str,
+                      output_dir: str,
+                      preprocess_fn: Callable[[tf.Tensor], tf.Tensor] = None):
+  """Creates generator of image tensors from image path glob
   
   Args:
-    image_path_glob: glob to retrieve image files
-    output_dir: directory to output inference results to
-    inference_fn: takes and outputs Tensor of shape [batch_size, None, None, 3]
-    visualise: flag to use colormap
-    stitch_original: flag to stitch original image by the side
-  """
+    image_path_glob: `str`, path pattern for images
+    output_dir: `str`, path to output logs
+    preprocess_fn: `Callable`, takes image tensor of shape (1, height, 
+      width, channels), produces altered image tensor of same shape
 
+  Yields:
+    `image`: `tf.Tensor`, image of shape (1, height, width, channels)
+    `img_filename`: `str`, path to image instance
+    `save_basename`: `str`, base save path for logs or outputs
+  """
   img_filenames = [f for f in glob.glob(image_path_glob, recursive=True)]
   image_dir = image_path_glob.split("*")[0].strip(os.sep).strip('/')
-  cmap = get_colormap(cmap_type='cityscapes').numpy()
 
   for img_filename in img_filenames:
     image = tf.io.read_file(img_filename)
@@ -41,42 +64,72 @@ def run_inference(image_path_glob,
     else:
         raise NotImplementedError("Unable to decode %s file type." %(image_format))
     
-    # generate save path
-    save_path = img_filename.replace(image_dir, output_dir)
-    save_dir = os.path.dirname(save_path)
-    if not os.path.exists(save_dir):
-      os.makedirs(save_dir)
-    
-    # perform pre-processing if specifiedinference and obtain segmentation map
     image = tf.expand_dims(image, axis=0)
     if preprocess_fn:
       image = preprocess_fn(image)
-    if save_logits_bin:
-      input_tensor_path = os.path.splitext(save_path)[0] + '_input'
-      if image.dtype == tf.float32:
-        image.numpy().flatten().astype(">f4").tofile(input_tensor_path)
-      elif image.dtype == tf.int32:
-        image.numpy().flatten().astype(">i4").tofile(input_tensor_path)
-    
-    logits = inference_fn(image)
-    if not isinstance(logits, np.ndarray):
-      logits = logits.numpy()
-    if save_logits_bin:
-      logits_path = os.path.splitext(save_path)[0] + '_logits'
-      logits.flatten().astype(">f4").tofile(logits_path)
-    logits = np.squeeze(logits)
-    if logits.ndim > 2:
-        logits = np.argmax(logits, axis=-1).astype(np.uint8)
-    seg_map = logits
 
-    # colormap, stitch original image for comparison
-    if visualise:
-      seg_map = cmap[seg_map]
-    if stitch_original:
-      image = tf.image.resize(image, seg_map.shape[:2])
-      image = np.squeeze(image.numpy()).astype(np.uint8)
-      seg_map = np.hstack((image, seg_map))
+    # generate save path
+    save_basename = img_filename.replace(image_dir, output_dir)
+    save_basename = os.path.splitext(save_basename)[0]
+    save_dir = os.path.dirname(save_basename)
+    if not os.path.exists(save_dir):
+      os.makedirs(save_dir)
     
-    encoded_seg_map = tf.image.encode_png(seg_map)
-    tf.io.write_file(save_path, encoded_seg_map)
-    print("Visualised %s, saving result at %s" %(img_filename, save_path))
+    yield image, img_filename, save_basename
+
+
+def write_tensor_as_bin(tensor: tf.Tensor,
+                        output_path: str):
+  """Write tensor as a binary file.
+  Uses big endian for compatibility with whizzscooters/raven-android tests.
+  """
+  if tensor.dtype == tf.float32:
+    tensor.numpy().flatten().astype(">f4").tofile(output_path)
+  elif tensor.dtype == tf.int32:
+    tensor.numpy().flatten().astype(">i4").tofile(output_path)
+  elif tensor.dtype == tf.uint8:
+    tensor.numpy().flatten().astype(">i1").tofile(output_path)
+  else:
+    raise NotImplementedError('Saving for %s is not implemented.' %(
+      tensor.dtype))
+
+
+def get_export_module(experiment: str,
+                      batch_size: int,
+                      config_files: Optional[str] = None):
+  """Get export module according to experiment config.
+  
+  Args:
+    experiment: `str`, look up for ExperimentConfig factory methods
+    batch_size: `int`, batch size of inference
+    config_file: `str`, path to yaml file that overrides experiment config.
+  """
+  params = exp_factory.get_exp_config(experiment)
+  for config_file in config_files or []:
+    params = hyperparams.override_params_dict(
+        params, config_file, is_strict=True)
+  params.validate()
+  params.lock()
+
+  # Obtain relevant serving object
+  kwargs = dict(params=params,
+                batch_size=batch_size,
+                input_image_size=params.task.model.input_size[:2],
+                num_channels=3)
+
+  if isinstance(params.task,configs.image_classification.ImageClassificationTask):
+    export_module = image_classification.ClassificationModule(**kwargs)
+  elif isinstance(params.task, configs.retinanet.RetinaNetTask) or \
+    isinstance(params.task, configs.maskrcnn.MaskRCNNTask):
+    export_module = detection.DetectionModule(**kwargs)
+  elif isinstance(params.task, configs.semantic_segmentation.SemanticSegmentationTask):
+    export_module = semantic_segmentation.SegmentationModule(**kwargs)
+  elif isinstance(params.task, configs.yolo.YoloTask):
+    export_module = yolo.YoloModule(**kwargs)
+  elif isinstance(params.task, multi_cfg.MultiTaskConfig):
+    export_module = multitask.MultitaskModule(**kwargs)
+  else:
+    raise ValueError('Export module not implemented for {} task.'.format(
+        type(params.task)))
+
+  return export_module
