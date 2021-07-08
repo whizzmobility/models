@@ -4,6 +4,7 @@ from typing import Callable, Optional
 import os
 import glob
 
+from absl import flags
 import tensorflow as tf
 
 # from official.common import registry_imports  # pylint: disable=unused-import
@@ -16,6 +17,22 @@ from official.vision.beta.serving import image_classification
 from official.vision.beta.serving import semantic_segmentation
 from official.vision.beta.serving import yolo
 from official.vision.beta.serving import multitask
+
+
+def define_flags():
+  """Defines flags specific for running inferences."""
+  # inference model flags
+  flags.DEFINE_integer('batch_size', 1, 'The batch size.')
+
+  # inference data flags
+  flags.DEFINE_string('image_path_glob', None, 'Test image directory.')
+  flags.DEFINE_string('output_dir', None, 'Output directory.')
+  flags.DEFINE_boolean('save_logits_bin', None, 'Flag to save logits bin.')
+
+  # optional flags, supplied as kwargs
+  flags.DEFINE_boolean('visualise', None, '(Segmentation) Flag to visualise mask.')
+  flags.DEFINE_boolean('stitch_original', None, '(Segmentation) Flag to stitch image at the side.')
+  flags.DEFINE_string('class_names_path', None, '(Yolo) Txt file with class names.')
 
 
 def inference_dataset(image_path_glob: str,

@@ -9,18 +9,6 @@ from official.common import flags as tfm_flags
 
 FLAGS = flags.FLAGS
 
-# inference model flags
-flags.DEFINE_integer('batch_size', None, 'The batch size.')
-
-# inference data flags
-flags.DEFINE_string('image_path_glob', None, 'Test image directory.')
-flags.DEFINE_string('output_dir', None, 'Output directory.')
-flags.DEFINE_boolean('save_logits_bin', None, 'Flag to save logits bin.')
-
-# unique flags
-flags.DEFINE_boolean('visualise', None, 'Flag to visualise mask.')
-flags.DEFINE_boolean('stitch_original', None, 'Flag to stitch image at the side.')
-
 tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[0], True)
 
 
@@ -51,4 +39,5 @@ def main(_):
 
 if __name__ == '__main__':
   tfm_flags.define_flags()
+  run_lib.define_flags()
   app.run(main)
