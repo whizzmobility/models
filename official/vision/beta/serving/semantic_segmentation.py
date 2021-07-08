@@ -119,7 +119,8 @@ class SegmentationModule(export_base.ExportModule):
           inference_fn: Callable[[tf.Tensor], tf.Tensor],
           visualise: bool = True,
           stitch_original: bool = True,
-          save_logits_bin: bool = False):
+          save_logits_bin: bool = False,
+          *args, **kwargs):
     """Runs inference graph for the model, for given directory of images
     
     Args:
