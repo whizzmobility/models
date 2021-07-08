@@ -5,11 +5,9 @@ set +o posix
 exec > >(tee ${MODEL_DIR}/run_model.log) 2>&1
 python ../serving/run_model.py \
     --experiment="${EXPERIMENT}" \
+    --batch_size=1 \
     --model_dir="${MODEL_DIR}" \
     --image_path_glob="${IMAGE_DIR_GLOB}" \
     --output_dir="${MODEL_DIR}/runs/trained" \
     --visualise=1 \
-    --stitch_original=1 \
-    --batch_size=1 \
-    --input_image_size=512,512 \
-    --config_file="../configs/experiments/semantic_segmentation/${CONFIG_FILENAME}.yaml"
+    --stitch_original=1
