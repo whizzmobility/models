@@ -28,6 +28,7 @@ from official.vision.beta import configs
 from official.vision.beta.serving import detection
 from official.vision.beta.serving import image_classification
 from official.vision.beta.serving import semantic_segmentation
+from official.vision.beta.serving import yolo
 from official.vision.beta.serving import multitask
 
 
@@ -107,6 +108,12 @@ def export_inference_graph(
           num_channels=num_channels,
           argmax_outputs=argmax_outputs,
           visualise_outputs=visualise_outputs)
+    elif isinstance(params.task, configs.yolo.YoloTask):
+      export_module = yolo.YoloModule(
+          params=params,
+          batch_size=batch_size,
+          input_image_size=input_image_size,
+          num_channels=num_channels)
     elif isinstance(params.task, multi_cfg.MultiTaskConfig):
       export_module = multitask.MultitaskModule(
           params=params,
