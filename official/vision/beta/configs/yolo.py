@@ -23,14 +23,19 @@ class DataConfig(cfg.DataConfig):
   shuffle_buffer_size: int = 1000
   cycle_length: int = 10
   aug_rand_hflip: bool = True
+  aug_scale_min: float = 1.0
+  aug_scale_max: float = 1.0
+  preserve_aspect_ratio: bool = True
   aug_jitter_im: float = 0.1
-  aug_rand_saturation: bool = True
-  aug_rand_brightness: bool = True
-  aug_rand_zoom: bool = True
-  aug_rand_hue: bool = True
+  aug_jitter_boxes: float = 0.025
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
   randaug_magnitude: Optional[int] = 10
-  randaug_available_ops: Optional[List[str]] = None
+
+  # visual randaugment only, since bbox augmentation ops not implemented well ye
+  randaug_available_ops: Optional[List[str]] = dataclasses.field(default_factory=lambda:
+    ['AutoContrast', 'Equalize', 'Invert', 'Posterize', 
+    'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 
+    'Cutout', 'SolarizeAdd'])
   drop_remainder: bool = True
   file_type: str = 'tfrecord'
 

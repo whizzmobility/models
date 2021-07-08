@@ -99,11 +99,11 @@ class YoloTask(base_task.Task):
         randaug_magnitude=params.randaug_magnitude,
         randaug_available_ops=params.randaug_available_ops,
         aug_rand_hflip=params.aug_rand_hflip,
+        aug_scale_min=params.aug_scale_min,
+        aug_scale_max=params.aug_scale_max,
+        preserve_aspect_ratio=params.preserve_aspect_ratio,
         aug_jitter_im=params.aug_jitter_im,
-        aug_rand_saturation=params.aug_rand_saturation,
-        aug_rand_brightness=params.aug_rand_brightness,
-        aug_rand_zoom=params.aug_rand_zoom,
-        aug_rand_hue=params.aug_rand_hue,
+        aug_jitter_boxes=params.aug_jitter_boxes,
         dtype=params.dtype)
 
     reader = input_reader_factory.input_reader_generator(

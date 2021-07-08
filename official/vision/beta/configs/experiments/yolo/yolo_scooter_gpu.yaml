@@ -42,14 +42,16 @@ task:
 
     dtype: 'float32'
     aug_rand_hflip: true
-    aug_jitter_im: 0.1
-    aug_rand_saturation: true
-    aug_rand_brightness: true
-    aug_rand_zoom: true
-    aug_rand_hue: true
+    aug_scale_min: 0.5
+    aug_scale_max: 2.0
+    preserve_aspect_ratio: false
+
+    aug_jitter_im: 0.1 # proportion of image
+    aug_jitter_boxes: 0.025 # magnitude of noise (usually 0.0-0.1)
+
     aug_policy: randaug
     randaug_magnitude: 5 # 5-10 for image classification
-    randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Rotate', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
+    randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
   validation_data:
     output_size: [256, 256]
     input_path: 'D:/data/whizz_tf/detect_env*'
