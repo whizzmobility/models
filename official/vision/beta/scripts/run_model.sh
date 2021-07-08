@@ -5,6 +5,7 @@ set +o posix
 exec > >(tee ${MODEL_DIR}/run_model.log) 2>&1
 python ../serving/run_model.py \
     --experiment="${EXPERIMENT}" \
+    --config_file="../configs/experiments/${TASK_TYPE}/${CONFIG_FILENAME}.yaml" \
     --batch_size=1 \
     --model_dir="${MODEL_DIR}" \
     --image_path_glob="${IMAGE_DIR_GLOB}" \

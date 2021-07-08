@@ -1,6 +1,6 @@
 r"""Vision models run inference utility function."""
 
-from typing import Callable
+from typing import Callable, Optional
 import os
 import glob
 
@@ -78,14 +78,19 @@ def write_tensor_as_bin(tensor: tf.Tensor,
 
 
 def get_export_module(experiment: str,
-                      batch_size: int):
+                      batch_size: int,
+                      config_files: Optional[str] = None):
   """Get export module according to experiment config.
   
   Args:
     experiment: `str`, look up for ExperimentConfig factory methods
     batch_size: `int`, batch size of inference
+    config_file: `str`, path to yaml file that overrides experiment config.
   """
   params = exp_factory.get_exp_config(experiment)
+  for config_file in config_files or []:
+    params = hyperparams.override_params_dict(
+        params, config_file, is_strict=True)
   params.validate()
   params.lock()
 

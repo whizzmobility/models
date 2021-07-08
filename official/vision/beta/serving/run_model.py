@@ -27,7 +27,8 @@ tf.config.experimental.set_memory_growth(tf.config.list_physical_devices('GPU')[
 def main(_):
   
   export_module = run_lib.get_export_module(experiment=FLAGS.experiment,
-                                            batch_size=FLAGS.batch_size)
+                                            batch_size=FLAGS.batch_size,
+                                            config_files=FLAGS.config_file)
   
   ckpt = tf.train.Checkpoint(model=export_module.model)
   ckpt_dir_or_file = FLAGS.model_dir
