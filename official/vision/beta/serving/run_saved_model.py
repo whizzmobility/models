@@ -26,7 +26,7 @@ def main(_):
     return image
 
   def inference_fn(image):
-    return [v for k, v in model_fn(image).items()]
+    return [v for k, v in sorted(model_fn(image).items())]
   
   export_module.run(image_path_glob=FLAGS.image_path_glob, 
                     output_dir=FLAGS.output_dir,
