@@ -34,8 +34,8 @@ class SegmentationModule(export_base.ExportModule):
   """Segmentation Module."""
 
   def __init__(self, 
-               argmax_outputs: bool = False, 
-               visualise_outputs: bool = False, 
+               argmax_outputs: bool = True, 
+               visualise_outputs: bool = True, 
                *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._argmax_outputs = argmax_outputs
