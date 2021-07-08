@@ -20,12 +20,17 @@ def main(_):
   imported = tf.saved_model.load(FLAGS.saved_model_dir)
   model_fn = imported.signatures['serving_default']
 
+  def preprocess_fn(image):
+    image = tf.image.resize(image, export_module._input_image_size)
+    image = tf.cast(image, dtype=tf.uint8)
+    return image
+
   def inference_fn(image):
     return [v for k, v in model_fn(image).items()]
   
   export_module.run(image_path_glob=FLAGS.image_path_glob, 
                     output_dir=FLAGS.output_dir,
-                    preprocess_fn=None,
+                    preprocess_fn=preprocess_fn,
                     inference_fn=inference_fn, 
                     visualise=FLAGS.visualise, 
                     stitch_original=FLAGS.stitch_original,
