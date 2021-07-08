@@ -41,6 +41,7 @@ def main(_):
                     inference_fn=inference_fn, 
                     visualise=FLAGS.visualise, 
                     stitch_original=FLAGS.stitch_original,
+                    class_names_path=FLAGS.class_names_path,
                     save_logits_bin=FLAGS.save_logits_bin)
 
 
