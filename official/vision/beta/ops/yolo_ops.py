@@ -5,6 +5,7 @@ Referenced from https://github.com/hunglc007/tensorflow-yolov4-tflite.
 from typing import List, Tuple
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 
 def resize_image_and_bboxes(image: tf.Tensor, 
@@ -55,6 +56,69 @@ def resize_image_and_bboxes(image: tf.Tensor,
   image = tf.image.resize(image, target_size)
 
   return image, bboxes
+
+
+def horizontal_flip_boxes(boxes, image_size):
+  """Flips normalized boxes horizontally."""
+  ymin, xmin, ymax, xmax = tf.split(
+      value=boxes, num_or_size_splits=4, axis=1)
+  flipped_xmin = tf.subtract(image_size, xmax)
+  flipped_xmax = tf.subtract(image_size, xmin)
+  flipped_boxes = tf.concat([ymin, flipped_xmin, ymax, flipped_xmax], 1)
+  return flipped_boxes
+
+
+def random_horizontal_flip(image, box, seed=None):
+  """Randomly flips input image and bounding boxes."""
+  with tf.name_scope('random_horizontal_flip'):
+    do_flip = tf.greater(tf.random.uniform([], seed=seed), 0.5)
+
+    image = tf.cond(
+        do_flip,
+        lambda: tf.image.flip_left_right(image),
+        lambda: image)
+    
+    image_size = tf.cast(tf.shape(image)[1], tf.float32)
+    box = tf.cond(
+        do_flip,
+        lambda: horizontal_flip_boxes(box, image_size),
+        lambda: box)
+
+    return image, box
+
+
+def random_translate(image, box, t, seed=None):
+  """Randomly translate the image and boxes.
+
+  Args:
+      image: a `Tensor` representing the image.
+      box: a `Tensor` represeting the boxes.
+      t: an `int` representing the translation factor
+      seed: an optional seed for tf.random operations
+  Returns:
+      image: a `Tensor` representing the augmented image.
+      box: a `Tensor` representing the augmented boxes.
+  """
+  t_x = tf.random.uniform(minval=-t,
+                          maxval=t,
+                          shape=(),
+                          dtype=tf.float32,
+                          seed=seed)
+  t_y = tf.random.uniform(minval=-t,
+                          maxval=t,
+                          shape=(),
+                          dtype=tf.float32,
+                          seed=seed)
+  image_size = tf.cast(tf.shape(image)[1], tf.float32)
+  with tf.name_scope('translate_boxes'):
+    offset = tf.stack([t_y, t_x, t_y, t_x], axis=-1)
+    box += offset * image_size
+  with tf.name_scope('translate_image'):
+    if (t_x != 0 and t_y != 0):
+      image_jitter = tf.convert_to_tensor([t_x, t_y])
+      image_jitter.set_shape([2])
+      image = tfa.image.translate(image, image_jitter * image_size)
+  return image, box
 
 
 def preprocess_true_boxes(bboxes: tf.Tensor,

@@ -6,9 +6,11 @@ import numpy as np
 
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
-from official.vision.beta.ops import augment, yolo_ops
-from official.vision.beta.projects.yolo.ops import box_ops
-from official.vision.beta.projects.yolo.ops import preprocess_ops as yolo_preprocess_ops
+from official.vision.beta.ops import augment, yolo_ops, box_ops, preprocess_ops
+from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
+
+MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
+STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 
 
 class Decoder(decoder.Decoder):
@@ -34,7 +36,9 @@ class Decoder(decoder.Decoder):
   def _decode_image(self, parsed_tensors):
     """Decodes the image and set its static shape."""
     image = tf.io.decode_image(parsed_tensors['image/encoded'], channels=3)
-    image.set_shape([None, None, 3])
+    height = parsed_tensors['image/height']
+    width = parsed_tensors['image/width']
+    image = tf.reshape(image, (height, width, 3))
     return image
 
   def _decode_boxes(self, parsed_tensors):
@@ -52,7 +56,7 @@ class Decoder(decoder.Decoder):
     
     bbox = tf.stack([x, y, w, h], axis=-1)
     if self.is_xywh:
-      bbox = box_ops.xcycwh_to_yxyx(bbox)
+      bbox = yolo_box_ops.xcycwh_to_yxyx(bbox)
 
     return bbox
 
@@ -98,11 +102,11 @@ class Parser(parser.Parser):
                randaug_magnitude: Optional[int] = 10,
                randaug_available_ops: Optional[List[str]] = None,
                aug_rand_hflip=False,
+               aug_scale_min=1.0,
+               aug_scale_max=1.0,
+               preserve_aspect_ratio=True,
                aug_jitter_im=0.1,
-               aug_rand_saturation=True,
-               aug_rand_brightness=True,
-               aug_rand_zoom=True,
-               aug_rand_hue=True,
+               aug_jitter_boxes=0.005,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
     !!! Augmentation ops assumes that boxes are yxyx format, non-normalized
@@ -123,12 +127,13 @@ class Parser(parser.Parser):
       randaug_available_ops: `List[str]`, specify augmentations for randaug
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
-      aug_rand_saturation: `bool`, if True, augment training with random
-        saturation.
-      aug_rand_brightness: `bool`, if True, augment training with random
-        brightness.
-      aug_rand_zoom: `bool`, if True, augment training with random zoom.
-      aug_rand_hue: `bool`, if True, augment training with random hue.
+      aug_scale_min: `float`, the minimum scale applied to `output_size` for
+        data augmentation during training.
+      aug_scale_max: `float`, the maximum scale applied to `output_size` for
+        data augmentation during training.
+      preserve_aspect_ratio: `bool`, whether to preserve aspect ratio during resize
+      aug_jitter_im: `float`, pixel value of maximum jitter applied to the image
+      aug_jitter_boxes: `float`, pixel value of maximum jitter applied to bbox
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
     self._output_size = output_size
@@ -146,11 +151,11 @@ class Parser(parser.Parser):
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
-    self._aug_rand_saturation = aug_rand_saturation
-    self._aug_rand_brightness = aug_rand_brightness
-    self._aug_rand_zoom = aug_rand_zoom
-    self._aug_rand_hue = aug_rand_hue
+    self._aug_scale_min = aug_scale_min
+    self._aug_scale_max = aug_scale_max
+    self._preserve_aspect_ratio = preserve_aspect_ratio
     self._aug_jitter_im = aug_jitter_im
+    self._aug_jitter_boxes = aug_jitter_boxes
 
     if aug_policy:
       # ops that changes the shape of the mask (any form of translation / rotation)
@@ -173,41 +178,37 @@ class Parser(parser.Parser):
     !!! Images are supposed to be in RGB format
     """
     image, boxes = data['image'], data['boxes']
-    image /= 255
 
-    image, boxes = yolo_ops.resize_image_and_bboxes(
-      image=image, 
-      bboxes=boxes, 
-      target_size=self._input_size[:2], 
-      preserve_aspect_ratio=False,
-      image_height=data['height'],
-      image_width=data['width'],
-      image_normalized=True)
+    # Execute RandAugment first as some ops require uint8 colors
+    if self._augmenter is not None:
+      image = self._augmenter.distort(image)
 
-    #TODO(ruien): this only works on normalized bboxes
-    # if self._aug_rand_hflip:
-    #   image, boxes, _ = preprocess_ops.random_horizontal_flip(image, boxes)
+    if self._aug_rand_hflip:  
+      image, boxes = yolo_ops.random_horizontal_flip(image, boxes)
     
-    #TODO(ruien): implement random zoom
-    #TODO(ruien): implement jitter boxes
+    image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        self._input_size[:2],
+        self._input_size[:2],
+        aug_scale_min=self._aug_scale_min,
+        aug_scale_max=self._aug_scale_max,
+        preserve_aspect_ratio=self._preserve_aspect_ratio)
+    boxes = preprocess_ops.resize_and_crop_boxes(boxes, image_info[2, :],
+                                                 image_info[1, :], image_info[3, :])
 
     if self._aug_jitter_im != 0.0:
-      image, boxes = yolo_preprocess_ops.random_translate(
-          image, boxes, self._aug_jitter_im)
-    
-    if self._aug_rand_brightness:
-      image = tf.image.random_brightness(
-          image=image, max_delta=.1)  # Brightness
+      image, boxes = yolo_ops.random_translate(image, boxes, self._aug_jitter_im)
 
-    if self._aug_rand_saturation:
-      image = tf.image.random_saturation(
-          image=image, lower=0.75, upper=1.25)  # Saturation
+    if self._aug_jitter_boxes != 0.0:
+      boxes = box_ops.jitter_boxes(boxes, self._aug_jitter_boxes)
 
-    if self._aug_rand_hue:
-      image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
+    image = preprocess_ops.normalize_image(image,
+                                           offset=MEAN_RGB,
+                                           scale=STDDEV_RGB)
+    image = tf.cast(image, dtype=self._dtype)
 
-    image = tf.clip_by_value(image, 0.0, 1.0)
-    bbox_labels = box_ops.yxyx_to_xcycwh(boxes)
+    boxes = tf.clip_by_value(boxes, 0, self._input_size[0]-1)
+    bbox_labels = yolo_box_ops.yxyx_to_xcycwh(boxes)
     bbox_labels = tf.concat([bbox_labels, data['classes'][:, tf.newaxis]], axis=-1)
 
     labels, bbox_labels = yolo_ops.preprocess_true_boxes(
