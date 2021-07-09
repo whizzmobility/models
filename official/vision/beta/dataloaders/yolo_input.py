@@ -220,16 +220,24 @@ class Parser(parser.Parser):
       strides=self.strides,
       anchors=self.anchors)
     
+    # pad / limit to 10 boxes for constant size
+    raw_bboxes = boxes
+    num_bboxes = tf.shape(raw_bboxes)[0]
+    if num_bboxes > 10:
+      raw_bboxes = raw_bboxes[:, :10]
+    else:
+      paddings = tf.stack([0, 10-num_bboxes], axis=-1)
+      paddings = tf.stack([paddings, [0,0]], axis=0)
+      raw_bboxes = tf.pad(raw_bboxes, paddings)
+
     targets = {
       'labels': labels,
       'bboxes': bbox_labels,
-      'raw_bboxes': boxes
+      'raw_bboxes': raw_bboxes
     }
 
     return image, targets
 
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
-    image, bboxes = self._prepare_image_and_bbox(data)
-
-    return image, bboxes
+    pass
