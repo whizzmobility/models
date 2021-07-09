@@ -77,7 +77,7 @@ class YoloTask(base_task.Task):
   def build_inputs(self,
                    params: exp_cfg.DataConfig,
                    input_context: Optional[tf.distribute.InputContext] = None):
-    """Builds classification input."""
+    """Builds yolo input."""
 
     if params.tfds_name:
       raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
