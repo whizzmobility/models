@@ -26,3 +26,4 @@ from official.vision.beta.modeling.backbones.resnest import ResNest
 from official.vision.beta.modeling.backbones.revnet import RevNet
 from official.vision.beta.modeling.backbones.spinenet import SpineNet
 from official.vision.beta.modeling.backbones.spinenet_mobile import SpineNetMobile
+from official.vision.beta.projects.yolo.modeling.backbones import darknet
