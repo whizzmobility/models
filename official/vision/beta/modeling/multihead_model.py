@@ -103,7 +103,7 @@ class MultiHeadMultiTaskModel(base_model.MultiTaskBaseModel):
                l2_regularizer: tf.keras.regularizers.Regularizer = None,
                input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
                  shape=[None, None, None, 3]),
-               init_checkpoint: str = '',
+               init_checkpoint: str = None,
                *args, **kwargs):
     
     self.backbone = backbone

@@ -279,8 +279,8 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
   return multi_cfg.MultiTaskExperimentConfig(
     task=multi_cfg.MultiTaskConfig(
       model=model_config,
-      init_checkpoint="",
-      task_routines=(segmentation_routine, classification_routine)
+      init_checkpoint=None,
+      task_routines=(segmentation_routine, classification_routine, yolo_routine)
     ), 
     trainer=multi_cfg.MultiTaskTrainerConfig(
       trainer_type="interleaving",

@@ -9,7 +9,7 @@ from official.common import dataset_fn
 from official.core import base_task
 from official.core import task_factory
 from official.vision.beta.configs import yolo as exp_cfg
-# from official.vision.beta.configs import multitask_config
+from official.vision.beta.configs import multitask_config
 from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import yolo_input
 from official.vision.beta.losses import yolo_losses
@@ -18,7 +18,7 @@ from official.vision.beta.ops import box_ops
 from orbit.utils import SummaryManager
 
 
-# @task_factory.register_task_cls(multitask_config.SemanticSegmentationSubtask)
+@task_factory.register_task_cls(multitask_config.YoloSubtask)
 @task_factory.register_task_cls(exp_cfg.YoloTask)
 class YoloTask(base_task.Task):
   """A task for YOLO."""
