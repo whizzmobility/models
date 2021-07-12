@@ -159,7 +159,9 @@ def preprocess_true_boxes(bboxes: tf.Tensor,
     bbox_class_ind = tf.cast(bbox[4], tf.int64)
 
     smooth_onehot = tf.one_hot(
-      bbox_class_ind, num_classes, off_value=1.0/num_classes)
+      bbox_class_ind, num_classes, 
+      on_value=(num_classes-1)/num_classes, 
+      off_value=1.0/num_classes)
 
     bbox_xywh_scaled = tf.repeat(
       bbox_xywh[tf.newaxis, :], repeats=len(strides), axis=0)
@@ -169,18 +171,20 @@ def preprocess_true_boxes(bboxes: tf.Tensor,
 
     iou = []
     exist_positive = False
-    # register for each anchor setting
+    
+    # register for each stride and corresponding anchor setting
     for i in range(3):
+      # get anchor bbox in xywh format
       anchors_xywh = tf.add(tf.floor(bbox_xywh_scaled[i, 0:2]), 0.5)
       anchors_xywh = tf.repeat(anchors_xywh[tf.newaxis, :], 3, axis=0) 
       anchors_xywh = tf.concat([anchors_xywh, tf.cast(anchors[i], tf.float32)], axis=-1)
 
-      iou_scale = bbox_iou(
-        bbox_xywh_scaled[i][tf.newaxis, :], anchors_xywh
-      )
+      # calculate iou for each anchor in this stride
+      iou_scale = bbox_iou(bbox_xywh_scaled[i][tf.newaxis, :], anchors_xywh)
       iou.append(iou_scale)
       iou_mask = iou_scale > 0.3
 
+      # update label at corresponding coordinate and boxes
       if tf.reduce_any(iou_mask):
         xind = tf.cast(tf.floor(bbox_xywh_scaled[i, 0]), tf.int32)
         yind = tf.cast(tf.floor(bbox_xywh_scaled[i, 1]), tf.int32)
@@ -194,11 +198,11 @@ def preprocess_true_boxes(bboxes: tf.Tensor,
 
         exist_positive = True
 
-    # registers for best anchor
+    # registers for best anchor if bbox not registered
     if not exist_positive:
-      best_anchor_ind = tf.argmax(tf.concat(iou, axis=-1), axis=-1)
-      best_detect = tf.cast(best_anchor_ind / anchor_per_scale, tf.int32)
-      best_anchor = tf.cast(best_anchor_ind % anchor_per_scale, tf.int32)
+      best_anchor_ind = tf.argmax(tf.concat(iou, axis=-1), axis=-1) # anchor with highest iou
+      best_detect = tf.cast(best_anchor_ind / anchor_per_scale, tf.int32) # corresponding stride level
+      best_anchor = tf.cast(best_anchor_ind % anchor_per_scale, tf.int32) # anchor idx within stride
       
       xind = tf.cast(tf.floor(bbox_xywh_scaled[best_detect, 0]), tf.int32)
       yind = tf.cast(tf.floor(bbox_xywh_scaled[best_detect, 1]), tf.int32)
