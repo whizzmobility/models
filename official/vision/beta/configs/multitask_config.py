@@ -138,6 +138,7 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
   """
   input_path_segmentation = ''
   input_path_classification = ''
+  input_path_yolo = ''
   steps_per_epoch = 6915
   train_batch_size = 1
   eval_batch_size = 1
@@ -200,6 +201,36 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
     eval_steps=None, # check where eval steps is used
     task_weight=1.0
   )
+  yolo_routine = multi_cfg.TaskRoutine(
+    task_name='yolo',
+    task_config=YoloSubtask(
+      model=YoloModelSpecs(
+          num_classes=4,
+          input_size=[256, 256, 3],
+          head=YoloHead(
+            anchor_per_scale=3,
+            strides=[16, 32, 64],
+            anchors=[12,16, 19,36, 40,28, 36,75, 76,55, 72,146, 142,110, 192,243, 459,401],
+            xy_scale=[1.2, 1.1, 1.05]
+          )),
+      losses=YoloLosses(l2_weight_decay=1e-4,
+                        iou_loss_thres=0.5),
+      train_data=YoloDataConfig(
+          input_path=input_path_yolo,
+          is_training=True,
+          global_batch_size=train_batch_size,
+          aug_policy='randaug',
+          randaug_magnitude=5
+      ),
+      validation_data=YoloDataConfig(
+          input_path=input_path_yolo,
+          is_training=False,
+          global_batch_size=eval_batch_size,
+          drop_remainder=False)
+    ),
+    eval_steps=None, # check where eval steps is used
+    task_weight=1.0
+  )
   
   model_config = MultiHeadModel(
     input_size=[256, 256, 3],
@@ -230,7 +261,17 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
             num_convs=0,
             feature_fusion=None,
             low_level=0,
-            low_level_num_filters=0))
+            low_level_num_filters=0)),
+      Submodel(
+        name='yolo',
+        num_classes=4,
+        decoder=decoders.Decoder(
+          type='pan', pan=decoders.PAN(levels=3)),
+        head=YoloHead(
+          anchor_per_scale=3,
+          strides=[16, 32, 64],
+          anchors=[12,16, 19,36, 40,28, 36,75, 76,55, 72,146, 142,110, 192,243, 459,401],
+          xy_scale=[1.2, 1.1, 1.05]))
     ],
     l2_weight_decay=1e-4
   )
