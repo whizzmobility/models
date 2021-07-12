@@ -94,9 +94,6 @@ def detector_yolo() -> cfg.ExperimentConfig:
   """YOLO on custom datasets"""
   
   config = cfg.ExperimentConfig(
-      runtime=cfg.RuntimeConfig(
-        run_eagerly=True
-      ),
       task=YoloTask(
           model=YoloModel(
               num_classes=6,
