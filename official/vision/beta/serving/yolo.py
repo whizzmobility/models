@@ -39,7 +39,8 @@ class YoloModule(export_base.ExportModule):
         self._input_image_size,
         padded_size=self._input_image_size,
         aug_scale_min=1.0,
-        aug_scale_max=1.0)
+        aug_scale_max=1.0,
+        preserve_aspect_ratio=False)
 
     return image
 
@@ -141,6 +142,9 @@ class YoloModule(export_base.ExportModule):
         score_threshold=0.25
       )
 
+      image_dim = min(image.shape[1], image.shape[2])
+      image = tf.image.resize(image, [image_dim, image_dim])
+      image = tf.cast(image, tf.uint8)
       image = image.numpy().squeeze()
       class_names = yolo_ops.read_class_names(class_names_path=class_names_path)
 
