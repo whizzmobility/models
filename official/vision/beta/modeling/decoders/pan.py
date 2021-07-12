@@ -83,10 +83,7 @@ class PAN(tf.keras.Model):
     inputs = {}
     feature_size = None
     for level, spec in reversed(input_specs.items()):
-      if spec[1] is None:
-        raise NotImplementedError("PAN not implemented for dynamic sizes." +\
-          " Specify static input spec.")
-      if feature_size == spec[1]:
+      if feature_size == spec[1] and spec[1] is not None:
         continue
       inputs[level] = tf.keras.Input(shape=spec[1:])
       feature_size = spec[1]

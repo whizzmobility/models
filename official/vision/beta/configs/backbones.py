@@ -113,6 +113,12 @@ class RevNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class DarkNet(hyperparams.Config):
+  """DarkNet config."""
+  model_id: str = "darknet53"
+
+
+@dataclasses.dataclass
 class Backbone(hyperparams.OneOfConfig):
   """Configuration for backbones.
 
@@ -140,3 +146,4 @@ class Backbone(hyperparams.OneOfConfig):
   spinenet: SpineNet = SpineNet()
   spinenet_mobile: SpineNetMobile = SpineNetMobile()
   mobilenet: MobileNet = MobileNet()
+  darknet: DarkNet = DarkNet()
