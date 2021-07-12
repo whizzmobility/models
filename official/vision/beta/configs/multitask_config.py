@@ -16,23 +16,16 @@ from official.vision.beta.configs import backbones
 from official.vision.beta.configs.image_classification import \
   DataConfig as ClassificationDataConfig, \
   Losses as ClassificationLosses, \
-  Evaluation as ClassificationEvaluation  
+  Evaluation as ClassificationEvaluation, \
+  ImageClassificationHead
 from official.vision.beta.configs.semantic_segmentation import \
   DataConfig as SegmentationDataConfig, \
   Losses as SegmentationLosses, \
   Evaluation as SegmentationEvaluation, \
   SegmentationHead
-
-
-@dataclasses.dataclass
-class ImageClassificationHead(hyperparams.Config):
-  """Image classification head config"""
-  level: int = 6
-  num_convs: int = 2
-  num_filters: int = 256
-  # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
-  add_head_batch_norm: bool = False
-  dropout_rate: float = 0.0
+from official.vision.beta.configs.yolo import \
+  DataConfig as YoloDataConfig, \
+  YoloLosses, YoloHead
 
 
 @dataclasses.dataclass
@@ -60,7 +53,7 @@ class MultiHeadModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class ImageClassificationModelSpecs(hyperparams.Config):
-  """The model config."""
+  """The model config for task params."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
 
@@ -81,7 +74,7 @@ class ImageClassificationSubtask(cfg.TaskConfig):
 
 @dataclasses.dataclass
 class SemanticSegmentationModelSpecs(hyperparams.Config):
-  """The model config."""
+  """The model config for task params."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
 
@@ -96,6 +89,29 @@ class SemanticSegmentationSubtask(cfg.TaskConfig):
   validation_data: SegmentationDataConfig = SegmentationDataConfig(is_training=False)
   losses: SegmentationLosses = SegmentationLosses()
   evaluation: SegmentationEvaluation = SegmentationEvaluation()
+  train_input_partition_dims: List[int] = dataclasses.field(
+      default_factory=list)
+  eval_input_partition_dims: List[int] = dataclasses.field(
+      default_factory=list)
+
+
+@dataclasses.dataclass
+class YoloModelSpecs(hyperparams.Config):
+  """The model config for task params."""
+  num_classes: int = 0
+  input_size: List[int] = dataclasses.field(default_factory=list)
+  head: hyperparams.Config = YoloHead()
+
+
+@dataclasses.dataclass
+class YoloSubtask(cfg.TaskConfig):
+  """The subtask config, similar to original task but with model and 
+  its related parameters (init_checkpoint, init_checkpoint_moduless,
+  model_output_keys) removed."""
+  model: YoloModelSpecs = YoloModelSpecs()
+  train_data: YoloDataConfig = YoloDataConfig(is_training=True)
+  validation_data: YoloDataConfig = YoloDataConfig(is_training=False)
+  losses: YoloLosses = YoloLosses()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(
