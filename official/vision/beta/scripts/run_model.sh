@@ -11,4 +11,5 @@ python ../serving/run_model.py \
     --image_path_glob="${IMAGE_DIR_GLOB}" \
     --output_dir="${MODEL_DIR}/runs/trained" \
     --visualise=1 \
-    --stitch_original=1
+    --stitch_original=1 \
+    --class_names_path='D:/data/SUTD_detector/classes.txt'

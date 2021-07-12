@@ -118,7 +118,7 @@ class PAN(tf.keras.Model):
     for i in range(routes-1):
       filters = PANET_SPECS[routes][i + routes - 1]
 
-      outputs[i] = self.conv(deep_route, filters=filters, kernels=3)
+      outputs[str(i)] = self.conv(deep_route, filters=filters, kernels=3)
       deep_route = self.conv(deep_route, filters=filters, kernels=3, downsample=True)
       deep_route = tf.concat([deep_route, skips.pop()], axis=self.bn_axis)
 
@@ -128,7 +128,7 @@ class PAN(tf.keras.Model):
       deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
 
-    outputs[routes-1] = self.conv(deep_route, filters=filters*2, kernels=3)
+    outputs[str(routes-1)] = self.conv(deep_route, filters=filters*2, kernels=3)
     self._output_specs = {k: v.get_shape() for k, v in outputs.items()}
 
     super(PAN, self).__init__(inputs=inputs, outputs=outputs, **kwargs)

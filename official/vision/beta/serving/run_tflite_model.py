@@ -21,13 +21,14 @@ def main(_):
   interpreter.allocate_tensors()
   input_details = interpreter.get_input_details()
   output_details = interpreter.get_output_details()
-  
+  output_indices = sorted([detail['index'] for detail in output_details])
+
   def inference_fn(image):
     interpreter.set_tensor(input_details[0]['index'], image)
     interpreter.invoke()
     outputs = []
     for i in range(len(output_details)):
-      outputs.append(interpreter.get_tensor(output_details[i]['index']))
+      outputs.append(interpreter.get_tensor(output_indices[i]))
     return outputs
   
   def preprocess_fn(image):
@@ -41,6 +42,7 @@ def main(_):
                     inference_fn=inference_fn, 
                     visualise=FLAGS.visualise, 
                     stitch_original=FLAGS.stitch_original,
+                    class_names_path=FLAGS.class_names_path,
                     save_logits_bin=FLAGS.save_logits_bin)
 
 

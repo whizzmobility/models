@@ -26,7 +26,7 @@ def main(_):
     return image
 
   def inference_fn(image):
-    return [v for k, v in model_fn(image).items()]
+    return [v for k, v in sorted(model_fn(image).items())]
   
   export_module.run(image_path_glob=FLAGS.image_path_glob, 
                     output_dir=FLAGS.output_dir,
@@ -34,6 +34,7 @@ def main(_):
                     inference_fn=inference_fn, 
                     visualise=FLAGS.visualise, 
                     stitch_original=FLAGS.stitch_original,
+                    class_names_path=FLAGS.class_names_path,
                     save_logits_bin=FLAGS.save_logits_bin)
 
 
