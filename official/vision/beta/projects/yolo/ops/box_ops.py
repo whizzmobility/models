@@ -192,7 +192,7 @@ def compute_giou(box1, box2):
     intersect_mins = tf.math.maximum(box1[..., 0:2], box2[..., 0:2])
     intersect_maxes = tf.math.minimum(box1[..., 2:4], box2[..., 2:4])
     intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins,
-                                   tf.zeros_like(intersect_mins))
+                                   tf.fill(intersect_mins.shape, 1e-7))
     intersection = intersect_wh[..., 0] * intersect_wh[..., 1]
 
     box1_area = tf.math.abs(
@@ -207,7 +207,7 @@ def compute_giou(box1, box2):
     # find the smallest box to encompase both box1 and box2
     c_mins = tf.math.minimum(box1[..., 0:2], box2[..., 0:2])
     c_maxes = tf.math.maximum(box1[..., 2:4], box2[..., 2:4])
-    c = tf.math.abs(tf.reduce_prod(c_mins - c_maxes, axis=-1))
+    c = tf.math.abs(tf.reduce_prod(c_mins - c_maxes, axis=-1)) + 1e-7
 
     # compute giou
     giou = iou - tf.math.divide_no_nan((c - union), c)
