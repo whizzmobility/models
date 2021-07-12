@@ -454,7 +454,6 @@ class YOLOv3Head(tf.keras.layers.Layer):
       self,
       levels: int,
       num_classes: int,
-      input_size: int,
       strides: List,
       anchor_per_scale: int,
       anchors: List,
@@ -471,7 +470,6 @@ class YOLOv3Head(tf.keras.layers.Layer):
       num_classes: An `int` number of mask classification categories. The number
         of classes does not include background class.
       levels: An `int` number of feature scales from decoder
-      input_size: An `int` denoting dimension of input
       strides: A `List` with `int` denoting stride for bbox location prediction
       anchor_per_scale: `int`, number of anchors per scale
       anchors: A `List` with `int` denoting width and height scaling for bbox
@@ -488,7 +486,6 @@ class YOLOv3Head(tf.keras.layers.Layer):
     self._config_dict = {
         'levels': levels,
         'num_classes': num_classes,
-        'input_size': input_size,
         'strides': strides,
         'anchor_per_scale': anchor_per_scale,
         'anchors': anchors,
