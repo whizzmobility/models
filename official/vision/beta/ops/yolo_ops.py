@@ -258,7 +258,7 @@ def bbox_iou(bboxes1, bboxes2):
     inter_section = tf.maximum(right_down - left_up, 0.0)
     inter_area = inter_section[..., 0] * inter_section[..., 1]
 
-    union_area = bboxes1_area + bboxes2_area - inter_area
+    union_area = bboxes1_area + bboxes2_area - inter_area + 1e-7
 
     iou = tf.math.divide_no_nan(inter_area, union_area)
 

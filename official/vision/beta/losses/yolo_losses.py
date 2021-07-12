@@ -18,10 +18,14 @@ class YoloLoss(tf.keras.losses.Loss):
                iou_loss_thres: float,
                reduction=tf.keras.losses.Reduction.AUTO,
                name='yolo_loss'):
-    """Initializes `YOLOv4` loss. Consists of ciou, giou and diou.
+    """Initializes `YOLOv4` loss. 
+    Options: 
+    Box loss: using giou out of ciou, giou and diou.
       - Generalised IoU (considers shape, orientation in addition to overlap)
       - Center IoU (considers overlap, distance between center, aspect ratio)
       - Distance IoU (considers distance of center of bbox)
+    Classsification loss: using focal loss out of focal or bce
+    Probability loss: using bce
 
     Args:
       input_size: `int`, Dimension of input image
@@ -57,7 +61,7 @@ class YoloLoss(tf.keras.losses.Loss):
         denoting raw logits from final convolution
       label: `tf.Tensor` of shape [batch, height, width, num_anchors, 5 + classes]
         denoting groundtruth labels scaled according to feature size
-      bboxes: `tf.Tensor` of shape [batch, height, width, num_anchors, 5 + classes]
+      bboxes: `tf.Tensor` of shape [batch, max_num_bboxes, 5 + classes]
         denoting ground truth bounding boxes scaled according to feature size
 
     Returns:
@@ -80,17 +84,19 @@ class YoloLoss(tf.keras.losses.Loss):
     respond_bbox  = label[:, :, :, :, 4:5] # confidence
     label_prob    = label[:, :, :, :, 5:]  # one-hot labels
 
+    giou, iou = box_ops.compute_giou(pred_xywh, label_xywh)
+    giou = tf.expand_dims(giou, axis=-1)
     giou = tf.expand_dims(box_ops.compute_giou(pred_xywh, label_xywh)[1], axis=-1)
 
     bbox_loss_scale = 2.0 - 1.0 * label_xywh[:, :, :, :, 2:3] * label_xywh[:, :, :, :, 3:4] / (self.input_size * self.input_size)
     giou_loss = respond_bbox * bbox_loss_scale * (1- giou)
 
-    iou = yolo_ops.bbox_iou(pred_xywh[:, :, :, :, tf.newaxis, :], bboxes[:, tf.newaxis, tf.newaxis, tf.newaxis, :, :])
-    max_iou = tf.expand_dims(tf.reduce_max(iou, axis=-1), axis=-1)
-
+    # iou = yolo_ops.bbox_iou(pred_xywh[:, :, :, :, tf.newaxis, :], bboxes[:, tf.newaxis, tf.newaxis, tf.newaxis, :, :])
+    # max_iou = tf.expand_dims(tf.reduce_max(iou, axis=-1), axis=-1)
+    max_iou = tf.expand_dims(iou, axis=-1)
     respond_bgd = (1.0 - respond_bbox) * tf.cast(max_iou < self.iou_loss_thres, tf.float32)
 
-    conf_focal = tf.pow(respond_bbox - pred_conf, 2)
+    conf_focal = tf.pow(respond_bbox - pred_conf, 2) # focal weight
 
     conf_loss = conf_focal * (
         respond_bbox * tf.nn.sigmoid_cross_entropy_with_logits(labels=respond_bbox, logits=conv_raw_conf)
