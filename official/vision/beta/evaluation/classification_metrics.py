@@ -38,7 +38,7 @@ class Precision(tf.keras.metrics.Precision):
         be broadcastable to `y_true`.
     
     Returns:
-      Precision per class.
+      Precision per of given class id or overall classes.
     """
     y_pred = tf.argmax(y_pred, axis=-1)
     y_pred = tf.one_hot(y_pred, self.num_classes, on_value=True, off_value=False)
@@ -81,7 +81,7 @@ class Recall(tf.keras.metrics.Recall):
         be broadcastable to `y_true`.
     
     Returns:
-      Recall per class.
+      Recall of given class id or overall recall.
     """
     y_pred = tf.argmax(y_pred, axis=-1)
     y_pred = tf.one_hot(y_pred, self.num_classes, on_value=True, off_value=False)
