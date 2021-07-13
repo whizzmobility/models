@@ -191,8 +191,7 @@ def compute_giou(box1, box2):
     # compute IOU
     intersect_mins = tf.math.maximum(box1[..., 0:2], box2[..., 0:2])
     intersect_maxes = tf.math.minimum(box1[..., 2:4], box2[..., 2:4])
-    intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins,
-                                   tf.fill(intersect_mins.shape, 1e-7))
+    intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins, 1e-7)
     intersection = intersect_wh[..., 0] * intersect_wh[..., 1]
 
     box1_area = tf.math.abs(

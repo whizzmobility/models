@@ -548,9 +548,9 @@ class YOLOv3Head(tf.keras.layers.Layer):
       x = self.heads[str(i)](x)
       outputs['raw_outputs'][str(i)] = x
 
-      x_shape = tf.shape(x)
+      x_shape = x.shape
       x = tf.reshape(x,
-                    (x_shape[0], x_shape[1], x_shape[2], 3, 5 + self.num_classes))
+                    (-1, x_shape[1], x_shape[2], 3, 5 + self.num_classes))
 
       raw_dxdy, raw_dwdh, raw_conf, raw_prob = tf.split(x, (2, 2, 1, self.num_classes),
                                                         axis=self._bn_axis)
@@ -558,7 +558,6 @@ class YOLOv3Head(tf.keras.layers.Layer):
       xy_grid = tf.meshgrid(tf.range(x_shape[1]), tf.range(x_shape[2]))
       xy_grid = tf.stack(xy_grid, axis=self._bn_axis) # [gx, gy, 2]
       xy_grid = tf.expand_dims(tf.expand_dims(xy_grid, axis=2), axis=0) # [1, gx, gy, 1, 2]
-      xy_grid = tf.tile(xy_grid, [tf.shape(x)[0], 1, 1, 3, 1])
       xy_grid = tf.cast(xy_grid, tf.float32)
 
       pred_xy = ((tf.sigmoid(raw_dxdy) * self.xy_scale[i]) - 0.5 * \

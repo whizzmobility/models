@@ -69,7 +69,7 @@ class YoloInputTest(tf.test.TestCase, parameterized.TestCase):
     image, target = sample
     
     if should_output_image:
-      output_image = tf.image.convert_image_dtype(tf.squeeze(image_data[0]), dtype=tf.uint8)
+      output_image = tf.image.convert_image_dtype(tf.squeeze(image[0]), dtype=tf.uint8)
       output_image = tf.image.encode_png(output_image)
       tf.io.write_file('D:/Desktop/test.png', output_image)
 
