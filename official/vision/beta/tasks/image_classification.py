@@ -25,7 +25,7 @@ from official.vision.beta.configs import image_classification as exp_cfg
 from official.vision.beta.configs import multitask_config
 from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.dataloaders import input_reader_factory
-from official.vision.beta.dataloaders import tfds_classification_decoders
+from official.vision.beta.dataloaders import tfds_factory
 from official.vision.beta.evaluation import classification_metrics
 from official.vision.beta.modeling import factory
 from orbit.utils import SummaryManager
@@ -98,11 +98,7 @@ class ImageClassificationTask(base_task.Task):
     is_multilabel = self.task_config.train_data.is_multilabel
 
     if params.tfds_name:
-      if params.tfds_name in tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP:
-        decoder = tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP[
-            params.tfds_name]()
-      else:
-        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+      decoder = tfds_factory.get_classification_decoder(params.tfds_name)
     else:
       decoder = classification_input.Decoder(
           image_field_key=image_field_key, label_field_key=label_field_key,
@@ -113,6 +109,7 @@ class ImageClassificationTask(base_task.Task):
         num_classes=num_classes,
         image_field_key=image_field_key,
         label_field_key=label_field_key,
+        decode_jpeg_only=params.decode_jpeg_only,
         aug_rand_hflip=params.aug_rand_hflip,
         aug_type=params.aug_type,
         is_multilabel=is_multilabel,

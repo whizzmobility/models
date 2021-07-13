@@ -70,6 +70,7 @@ class Parser(parser.Parser):
                num_classes: float,
                image_field_key: str = DEFAULT_IMAGE_FIELD_KEY,
                label_field_key: str = DEFAULT_LABEL_FIELD_KEY,
+               decode_jpeg_only: bool = True,
                aug_rand_hflip: bool = True,
                aug_type: Optional[common.Augmentation] = None,
                is_multilabel: bool = False,
@@ -85,6 +86,8 @@ class Parser(parser.Parser):
       num_classes: `float`, number of classes.
       image_field_key: `str`, the key name to encoded image in tf.Example.
       label_field_key: `str`, the key name to label in tf.Example.
+      decode_jpeg_only: `bool`, if True, only JPEG format is decoded, this is
+        faster than decoding other types. Default is True.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
@@ -133,6 +136,7 @@ class Parser(parser.Parser):
       self._augmenter = None
     self._label_field_key = label_field_key
     self._is_multilabel = is_multilabel
+    self._decode_jpeg_only = decode_jpeg_only
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
@@ -158,13 +162,29 @@ class Parser(parser.Parser):
     """Parses image data for training."""
     # TODO: add option to crop images
     image_bytes = decoded_tensors[self._image_field_key]
-    if 'image/height' in decoded_tensors and 'image/width' in decoded_tensors:
-      image_shape = (decoded_tensors['image/height'], decoded_tensors['image/width'], 3)
-    else:
+
+    if self._decode_jpeg_only:
       image_shape = tf.image.extract_jpeg_shape(image_bytes)
 
-    image = tf.io.decode_image(image_bytes, channels=3)
-    image = tf.reshape(image, image_shape)
+      # Crops image.
+      cropped_image = preprocess_ops.random_crop_image_v2(
+          image_bytes, image_shape)
+      image = tf.cond(
+          tf.reduce_all(tf.equal(tf.shape(cropped_image), image_shape)),
+          lambda: preprocess_ops.center_crop_image_v2(image_bytes, image_shape),
+          lambda: cropped_image)
+    else:
+      # Decodes image.
+      image = tf.io.decode_image(image_bytes, channels=3)
+      image.set_shape([None, None, 3])
+
+      # Crops image.
+      cropped_image = preprocess_ops.random_crop_image(image)
+
+      image = tf.cond(
+          tf.reduce_all(tf.equal(tf.shape(cropped_image), tf.shape(image))),
+          lambda: preprocess_ops.center_crop_image(image),
+          lambda: cropped_image)
 
     if self._aug_rand_hflip:
       image = tf.image.random_flip_left_right(image)
@@ -176,6 +196,11 @@ class Parser(parser.Parser):
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max,
         preserve_aspect_ratio=self._preserve_aspect_ratio)
+
+    # Resizes image.
+    image = tf.image.resize(
+        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+    image.set_shape([self._output_size[0], self._output_size[1], 3])
 
     # Apply autoaug or randaug.
     if self._augmenter is not None:
@@ -193,20 +218,24 @@ class Parser(parser.Parser):
 
   def _parse_eval_image(self, decoded_tensors):
     """Parses image data for evaluation."""
-    image = tf.io.decode_image(
-      decoded_tensors[self._image_field_key], channels=3)
+    image_bytes = decoded_tensors[self._image_field_key]
 
-    image = tf.reshape(image, 
-      (decoded_tensors['image/height'], decoded_tensors['image/width'], 3))
+    if self._decode_jpeg_only:
+      image_shape = tf.image.extract_jpeg_shape(image_bytes)
 
-    # TODO: Add option to center crop and resize image.
-    image, _ = preprocess_ops.resize_and_crop_image(
-        image,
-        self._output_size,
-        self._output_size,
-        preserve_aspect_ratio=self._preserve_aspect_ratio)
+      # Center crops.
+      image = preprocess_ops.center_crop_image_v2(image_bytes, image_shape)
+    else:
+      # Decodes image.
+      image = tf.io.decode_image(image_bytes, channels=3)
+      image.set_shape([None, None, 3])
 
-    image = tf.reshape(image, [self._output_size[0], self._output_size[1], 3])
+      # Center crops.
+      image = preprocess_ops.center_crop_image(image)
+
+    image = tf.image.resize(
+        image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+    image.set_shape([self._output_size[0], self._output_size[1], 3])
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image,
