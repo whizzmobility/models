@@ -68,18 +68,10 @@ class YoloModule(export_base.ExportModule):
     outputs = self.inference_step(images) # tf.keras.Model's __call__ method
 
     num_classes = outputs['predictions']['0'].shape[-1] - 5
-    bbox_tensors = []
-    prob_tensors = []
-
-    for _, prediction in outputs['predictions'].items():
-      pred_xywh, pred_conf, pred_prob = tf.split(prediction, (4, 1, num_classes), axis=-1)
-
-      pred_prob = pred_conf * pred_prob
-      pred_prob = tf.reshape(pred_prob, (self._batch_size, -1, num_classes))
-      pred_xywh = tf.reshape(pred_xywh, (self._batch_size, -1, 4))
-
-      bbox_tensors.append(pred_xywh)
-      prob_tensors.append(pred_prob)
+    bbox_tensors, prob_tensors = yolo_ops.concat_tensor_dict(
+      tensor_dict=outputs['predictions'], 
+      num_classes=num_classes
+    )
 
     bbox_tensors = tf.concat(bbox_tensors, axis=1)
     prob_tensors = tf.concat(prob_tensors, axis=1)
@@ -123,9 +115,9 @@ class YoloModule(export_base.ExportModule):
       if save_logits_bin:
         run_lib.write_tensor_as_bin(tensor=image, 
                                     output_path=save_basename + '_input')
-        run_lib.write_tensor_as_bin(tensor=boxes, 
+        run_lib.write_tensor_as_bin(tensor=bbox_tensors, 
                                     output_path=save_basename + '_boxes')
-        run_lib.write_tensor_as_bin(tensor=pred_conf, 
+        run_lib.write_tensor_as_bin(tensor=prob_tensors, 
                                     output_path=save_basename + '_pred_conf')
 
       boxes, pred_conf = yolo_ops.filter_boxes(box_xywh=bbox_tensors,
