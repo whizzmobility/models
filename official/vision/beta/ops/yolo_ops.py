@@ -265,6 +265,40 @@ def bbox_iou(bboxes1, bboxes2):
     return iou
 
 
+def concat_tensor_dict(tensor_dict: Mapping[str, tf.Tensor],
+                       num_classes: int):
+  """Collate bbox and corresponding class tensors, from dictionary of tensors
+  
+  Args:
+    tensor: `dict` with `tf.Tensor` values, of shape [batch, output_size, 
+      output_size, anchors_per_scale, 5 + classes]
+    num_classes: `int`, number of classes
+  
+  Returns:
+    `bbox`: `tf.Tensor` of shape [batch, None, 4]
+    `classes`: `tf.Tensor` of shape [batch, None, 1]
+  """
+  bbox_tensors = []
+  prob_tensors = []
+
+  for _, prediction in tensor_dict.items():
+    pred_xywh, pred_conf, pred_prob = tf.split(prediction, (4, 1, num_classes), axis=-1)
+    tensor_shape = pred_prob.shape
+    num_instance = tensor_shape[1] * tensor_shape[2] * tensor_shape[3]
+
+    pred_prob = pred_conf * pred_prob
+    pred_prob = tf.reshape(pred_prob, (-1, num_instance, num_classes))
+    pred_xywh = tf.reshape(pred_xywh, (-1, num_instance, 4))
+
+    bbox_tensors.append(pred_xywh)
+    prob_tensors.append(pred_prob)
+
+  bbox_tensors = tf.concat(bbox_tensors, axis=1)
+  prob_tensors = tf.concat(prob_tensors, axis=1)
+  
+  return bbox_tensors, prob_tensors
+
+
 def filter_boxes(box_xywh: tf.Tensor, 
                  scores: tf.Tensor, 
                  score_threshold: float, 
