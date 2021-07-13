@@ -245,23 +245,28 @@ class Parser(parser.Parser):
     !!! Images are supposed to be in RGB format
     """
     image, boxes = data['image'], data['boxes']
-    image /= 255
 
-    image, boxes = yolo_ops.resize_image_and_bboxes(
-      image=image, 
-      bboxes=boxes, 
-      target_size=self._input_size[:2], 
-      preserve_aspect_ratio=False,
-      image_height=data['height'],
-      image_width=data['width'],
-      image_normalized=True)
+    image, image_info = preprocess_ops.resize_and_crop_image(
+        image,
+        self._input_size[:2],
+        self._input_size[:2],
+        aug_scale_min=self._aug_scale_min,
+        aug_scale_max=self._aug_scale_max,
+        preserve_aspect_ratio=self._preserve_aspect_ratio)
+    boxes = preprocess_ops.resize_and_crop_boxes(boxes, image_info[2, :],
+                                                 image_info[1, :], image_info[3, :])
 
-    image = tf.clip_by_value(image, 0.0, 1.0)
-    boxes = box_ops.yxyx_to_xcycwh(boxes)
-    boxes = tf.concat([boxes, data['classes'][:, tf.newaxis]], axis=-1)
+    image = preprocess_ops.normalize_image(image,
+                                           offset=MEAN_RGB,
+                                           scale=STDDEV_RGB)
+    image = tf.cast(image, dtype=self._dtype)
 
-    labels, bboxes = yolo_ops.preprocess_true_boxes(
-      bboxes=boxes,
+    boxes = tf.clip_by_value(boxes, 0, self._input_size[0]-1)
+    bbox_labels = yolo_box_ops.yxyx_to_xcycwh(boxes)
+    bbox_labels = tf.concat([bbox_labels, data['classes'][:, tf.newaxis]], axis=-1)
+
+    labels, bbox_labels = yolo_ops.preprocess_true_boxes(
+      bboxes=bbox_labels,
       train_output_sizes=self.train_output_sizes,
       anchor_per_scale=self.anchor_per_scale,
       num_classes=self.num_classes,
@@ -271,7 +276,7 @@ class Parser(parser.Parser):
     
     targets = {
       'labels': labels,
-      'bboxes': bboxes
+      'bboxes': bbox_labels
     }
 
     return image, targets
