@@ -17,7 +17,7 @@ from official.modeling.multitask import configs as multi_cfg
 from official.vision.beta.configs import multitask_config
 from official.vision.beta.modeling.segmentation_model import SegmentationModel
 from official.vision.beta.modeling.decoders import factory as decoder_factory
-from official.vision.beta.modeling.heads import segmentation_heads, classification_heads
+from official.vision.beta.modeling.heads import segmentation_heads, classification_heads, instance_heads
 from official.vision.beta.modeling import factory_multitask
 
 layers = tf.keras.layers
@@ -88,6 +88,15 @@ def build_submodel(
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
         kernel_regularizer=l2_regularizer)
+  elif isinstance(head_config, multitask_config.YoloHead):
+    head = instance_heads.YOLOv3Head(
+        levels=len(decoder.output_specs),
+        num_classes=submodel_config.num_classes,
+        strides=head_config.strides,
+        anchor_per_scale=head_config.anchor_per_scale,
+        anchors=head_config.anchors,
+        xy_scale=head_config.xy_scale,
+        kernel_regularizer=l2_regularizer)
   else:
     raise NotImplementedError('%s head is not implemented yet.' %(type(head_config)))
 
@@ -103,7 +112,7 @@ class MultiHeadMultiTaskModel(base_model.MultiTaskBaseModel):
                l2_regularizer: tf.keras.regularizers.Regularizer = None,
                input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
                  shape=[None, None, None, 3]),
-               init_checkpoint: str = '',
+               init_checkpoint: str = None,
                *args, **kwargs):
     
     self.backbone = backbone

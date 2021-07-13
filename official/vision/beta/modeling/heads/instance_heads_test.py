@@ -154,7 +154,6 @@ class YOLOv3HeadTest(parameterized.TestCase, tf.test.TestCase):
     yolov3_head = instance_heads.YOLOv3Head(
         levels=levels,
         num_classes=80,
-        input_size=input_size,
         strides=strides,
         anchor_per_scale=anchor_per_scale,
         anchors=anchors,
@@ -185,7 +184,6 @@ class YOLOv3HeadTest(parameterized.TestCase, tf.test.TestCase):
     yolov3_head = instance_heads.YOLOv3Head(
         levels=3,
         num_classes=80,
-        input_size=256,
         strides=[16, 32],
         anchor_per_scale=3,
         anchors=[23,27, 37,58, 81,82, 81,82, 135,169, 344,319],

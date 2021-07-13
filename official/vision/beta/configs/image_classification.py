@@ -53,6 +53,17 @@ class DataConfig(cfg.DataConfig):
 
 
 @dataclasses.dataclass
+class ImageClassificationHead(hyperparams.Config):
+  """Image classification head config"""
+  level: int = 6
+  num_convs: int = 2
+  num_filters: int = 256
+  # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
+  add_head_batch_norm: bool = False
+  dropout_rate: float = 0.0
+
+
+@dataclasses.dataclass
 class ImageClassificationModel(hyperparams.Config):
   """The model config."""
   num_classes: int = 0

@@ -16,23 +16,16 @@ from official.vision.beta.configs import backbones
 from official.vision.beta.configs.image_classification import \
   DataConfig as ClassificationDataConfig, \
   Losses as ClassificationLosses, \
-  Evaluation as ClassificationEvaluation  
+  Evaluation as ClassificationEvaluation, \
+  ImageClassificationHead
 from official.vision.beta.configs.semantic_segmentation import \
   DataConfig as SegmentationDataConfig, \
   Losses as SegmentationLosses, \
   Evaluation as SegmentationEvaluation, \
   SegmentationHead
-
-
-@dataclasses.dataclass
-class ImageClassificationHead(hyperparams.Config):
-  """Image classification head config"""
-  level: int = 6
-  num_convs: int = 2
-  num_filters: int = 256
-  # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
-  add_head_batch_norm: bool = False
-  dropout_rate: float = 0.0
+from official.vision.beta.configs.yolo import \
+  DataConfig as YoloDataConfig, \
+  YoloLosses, YoloHead
 
 
 @dataclasses.dataclass
@@ -60,7 +53,7 @@ class MultiHeadModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class ImageClassificationModelSpecs(hyperparams.Config):
-  """The model config."""
+  """The model config for task params."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
 
@@ -81,7 +74,7 @@ class ImageClassificationSubtask(cfg.TaskConfig):
 
 @dataclasses.dataclass
 class SemanticSegmentationModelSpecs(hyperparams.Config):
-  """The model config."""
+  """The model config for task params."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
 
@@ -96,6 +89,29 @@ class SemanticSegmentationSubtask(cfg.TaskConfig):
   validation_data: SegmentationDataConfig = SegmentationDataConfig(is_training=False)
   losses: SegmentationLosses = SegmentationLosses()
   evaluation: SegmentationEvaluation = SegmentationEvaluation()
+  train_input_partition_dims: List[int] = dataclasses.field(
+      default_factory=list)
+  eval_input_partition_dims: List[int] = dataclasses.field(
+      default_factory=list)
+
+
+@dataclasses.dataclass
+class YoloModelSpecs(hyperparams.Config):
+  """The model config for task params."""
+  num_classes: int = 0
+  input_size: List[int] = dataclasses.field(default_factory=list)
+  head: hyperparams.Config = YoloHead()
+
+
+@dataclasses.dataclass
+class YoloSubtask(cfg.TaskConfig):
+  """The subtask config, similar to original task but with model and 
+  its related parameters (init_checkpoint, init_checkpoint_moduless,
+  model_output_keys) removed."""
+  model: YoloModelSpecs = YoloModelSpecs()
+  train_data: YoloDataConfig = YoloDataConfig(is_training=True)
+  validation_data: YoloDataConfig = YoloDataConfig(is_training=False)
+  losses: YoloLosses = YoloLosses()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(
@@ -122,6 +138,7 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
   """
   input_path_segmentation = ''
   input_path_classification = ''
+  input_path_yolo = ''
   steps_per_epoch = 6915
   train_batch_size = 1
   eval_batch_size = 1
@@ -184,6 +201,36 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
     eval_steps=None, # check where eval steps is used
     task_weight=1.0
   )
+  yolo_routine = multi_cfg.TaskRoutine(
+    task_name='yolo',
+    task_config=YoloSubtask(
+      model=YoloModelSpecs(
+          num_classes=4,
+          input_size=[256, 256, 3],
+          head=YoloHead(
+            anchor_per_scale=3,
+            strides=[16, 32, 64],
+            anchors=[12,16, 19,36, 40,28, 36,75, 76,55, 72,146, 142,110, 192,243, 459,401],
+            xy_scale=[1.2, 1.1, 1.05]
+          )),
+      losses=YoloLosses(l2_weight_decay=1e-4,
+                        iou_loss_thres=0.5),
+      train_data=YoloDataConfig(
+          input_path=input_path_yolo,
+          is_training=True,
+          global_batch_size=train_batch_size,
+          aug_policy='randaug',
+          randaug_magnitude=5
+      ),
+      validation_data=YoloDataConfig(
+          input_path=input_path_yolo,
+          is_training=False,
+          global_batch_size=eval_batch_size,
+          drop_remainder=False)
+    ),
+    eval_steps=None, # check where eval steps is used
+    task_weight=1.0
+  )
   
   model_config = MultiHeadModel(
     input_size=[256, 256, 3],
@@ -214,7 +261,17 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
             num_convs=0,
             feature_fusion=None,
             low_level=0,
-            low_level_num_filters=0))
+            low_level_num_filters=0)),
+      Submodel(
+        name='yolo',
+        num_classes=4,
+        decoder=decoders.Decoder(
+          type='pan', pan=decoders.PAN(levels=3)),
+        head=YoloHead(
+          anchor_per_scale=3,
+          strides=[16, 32, 64],
+          anchors=[12,16, 19,36, 40,28, 36,75, 76,55, 72,146, 142,110, 192,243, 459,401],
+          xy_scale=[1.2, 1.1, 1.05]))
     ],
     l2_weight_decay=1e-4
   )
@@ -222,8 +279,8 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
   return multi_cfg.MultiTaskExperimentConfig(
     task=multi_cfg.MultiTaskConfig(
       model=model_config,
-      init_checkpoint="",
-      task_routines=(segmentation_routine, classification_routine)
+      init_checkpoint=None,
+      task_routines=(segmentation_routine, classification_routine, yolo_routine)
     ), 
     trainer=multi_cfg.MultiTaskTrainerConfig(
       trainer_type="interleaving",

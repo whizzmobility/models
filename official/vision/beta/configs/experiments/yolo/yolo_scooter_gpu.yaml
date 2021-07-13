@@ -55,7 +55,7 @@ task:
   validation_data:
     output_size: [256, 256]
     input_path: '/mnt/ssd2/tfrecords/detect_env*'
-    is_training: true
+    is_training: false
 
     global_batch_size: 1
     max_bbox_per_scale: 150

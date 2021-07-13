@@ -46,8 +46,22 @@ task:
           low_level: 0,
           low_level_num_filters: 0}
       },
+      {
+        name: "yolo", # has to match task_configs's
+        init_checkpoint_modules: 'backbone',
+        num_classes: 6, # has to match task_configs's
+        decoder: {
+          type: 'pan',
+          pan: {
+            levels: 3}},
+        head: {
+          anchor_per_scale: 3,
+          strides: [16, 32, 64],  # depends on downsampling on model side
+          anchors: [7,10, 12,22, 25,17, 22,46, 46,33, 44,90, 87,68, 118,150, 282,247],
+          xy_scale: [1.2, 1.1, 1.05]}
+      }
     ]
-  init_checkpoint: '/home/whizz/experiments/imagenetbase/deeplabv3plus_hardnet_scooter_gpu_256x256_imagenetbase2_notranslate/ckpt-864000'
+  #init_checkpoint: '/home/whizz/experiments/imagenetbase/deeplabv3plus_hardnet_scooter_gpu_256x256_imagenetbase2_notranslate/ckpt-864000'
   task_routines: !!python/tuple
   - task_name: segmentation  # has to match model's
     task_weight: 1.0
@@ -113,6 +127,48 @@ task:
         drop_remainder: false
       evaluation:
         report_per_class_metrics: true
+  - task_name: yolo # has to match model's
+    task_weight: 1.0
+    eval_steps: null
+    task_config:
+      model:
+        input_size: [256, 256, 3]  # has to match model's
+        num_classes: 6  # has to match model's
+        head:
+          anchor_per_scale: 3
+          strides: [16, 32, 64]  # depends on downsampling on model side
+          anchors: [7,10, 12,22, 25,17, 22,46, 46,33, 44,90, 87,68, 118,150, 282,247]
+          xy_scale: [1.2, 1.1, 1.05]
+      losses:
+        l2_weight_decay: 0.0001
+        iou_loss_thres: 0.5
+        class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      train_data:
+        input_path: 'D:/data/tfrecords/detect_env*'
+
+        global_batch_size: 1 ###
+
+        is_training: true
+        max_bbox_per_scale: 150
+        is_bbox_in_pixels: false
+        is_xywh: true
+        aug_rand_hflip: true
+        aug_scale_min: 0.5
+        aug_scale_max: 1.0
+        preserve_aspect_ratio: false
+        aug_jitter_im: 0.1 # proportion of image
+        aug_jitter_boxes: 0.025 # magnitude of noise (usually 0.0-0.1)
+        aug_policy: randaug
+        randaug_magnitude: 5
+        randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
+      validation_data:
+        input_path: 'D:/data/tfrecords/detect_env*'
+        global_batch_size: 1 ###
+        is_training: false
+        max_bbox_per_scale: 150
+        is_bbox_in_pixels: false
+        is_xywh: true
+        preserve_aspect_ratio: false
 trainer:
   trainer_type: interleaving # interleaving no train_loop_end for logging yet
   task_sampler:
