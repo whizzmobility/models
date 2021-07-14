@@ -6,8 +6,9 @@ import numpy as np
 import tensorflow as tf
 
 from official.vision.beta.modeling import factory
-from official.vision.beta.ops import preprocess_ops, yolo_ops
+from official.vision.beta.ops import box_ops, preprocess_ops, yolo_ops
 from official.vision.beta.serving import export_base, run_lib
+from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
 
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
@@ -68,25 +69,32 @@ class YoloModule(export_base.ExportModule):
     outputs = self.inference_step(images) # tf.keras.Model's __call__ method
 
     num_classes = outputs['predictions']['0'].shape[-1] - 5
-    bbox_tensors = []
-    prob_tensors = []
+    bbox_tensors, prob_tensors = yolo_ops.concat_tensor_dict(
+      tensor_dict=outputs['predictions'], 
+      num_classes=num_classes
+    )
 
-    for _, prediction in outputs['predictions'].items():
-      pred_xywh, pred_conf, pred_prob = tf.split(prediction, (4, 1, num_classes), axis=-1)
-
-      pred_prob = pred_conf * pred_prob
-      pred_prob = tf.reshape(pred_prob, (self._batch_size, -1, num_classes))
-      pred_xywh = tf.reshape(pred_xywh, (self._batch_size, -1, 4))
-
-      bbox_tensors.append(pred_xywh)
-      prob_tensors.append(pred_prob)
-
-    bbox_tensors = tf.concat(bbox_tensors, axis=1)
-    prob_tensors = tf.concat(prob_tensors, axis=1)
+    boxes = tf.concat(bbox_tensors, axis=1)
+    boxes = tf.squeeze(yolo_box_ops.xcycwh_to_yxyx(boxes))
+    scores = tf.concat(prob_tensors, axis=1)
+    scores = tf.squeeze(tf.math.reduce_max(scores, axis=-1))
+    classes = tf.argmax(prob_tensors, axis=-1)
+    
+    indices = tf.image.non_max_suppression(boxes=boxes,
+                                           scores=scores,
+                                           max_output_size=20,
+                                           iou_threshold=0.5,
+                                           score_threshold=0.25)
+    
+    boxes = tf.expand_dims(tf.gather(boxes, indices), axis=0)
+    boxes = box_ops.normalize_boxes(boxes, self._input_image_size)
+    scores = tf.expand_dims(tf.gather(scores, indices), axis=0)
+    classes = tf.gather(classes, indices, axis=1)
 
     return {
-      'boxes': bbox_tensors,
-      'pred_conf': prob_tensors
+      'boxes': boxes,
+      'classes': classes,
+      'scores': scores
     }
 
   def run(self,
@@ -118,41 +126,34 @@ class YoloModule(export_base.ExportModule):
     for image, img_filename, save_basename in dataset:
 
       logits = inference_fn(image)
-      bbox_tensors, prob_tensors = logits
+      boxes, classes, scores = logits
+      
+      # multitensor output exporting is not deterministic
+      if classes.dtype == 'float32':
+        classes, scores = scores, classes
 
       if save_logits_bin:
         run_lib.write_tensor_as_bin(tensor=image, 
                                     output_path=save_basename + '_input')
         run_lib.write_tensor_as_bin(tensor=boxes, 
                                     output_path=save_basename + '_boxes')
-        run_lib.write_tensor_as_bin(tensor=pred_conf, 
-                                    output_path=save_basename + '_pred_conf')
+        run_lib.write_tensor_as_bin(tensor=scores, 
+                                    output_path=save_basename + 'scores')
 
-      boxes, pred_conf = yolo_ops.filter_boxes(box_xywh=bbox_tensors,
-                                               scores=prob_tensors,
-                                               score_threshold=0.4,
-                                               input_shape=self._input_image_size)
-
-      boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
-        boxes=tf.reshape(boxes, (self._batch_size, -1, 1, 4)),
-        scores=tf.reshape(pred_conf, (self._batch_size, -1, tf.shape(pred_conf)[-1])),
-        max_output_size_per_class=50,
-        max_total_size=50,
-        iou_threshold=0.5,
-        score_threshold=0.25
-      )
-
-      image_dim = min(image.shape[1], image.shape[2])
-      image = tf.image.resize(image, [image_dim, image_dim])
+      image = tf.image.resize(image, self._input_image_size)
       image = tf.cast(image, tf.uint8)
-      image = image.numpy().squeeze()
       class_names = yolo_ops.read_class_names(class_names_path=class_names_path)
 
-      output_image = yolo_ops.draw_bbox(image=image,
-                                        bboxes=boxes.numpy(),
-                                        scores=scores.numpy(),
-                                        classes=classes.numpy(),
-                                        num_bboxes=valid_detections.numpy(),
+      def tensor_to_numpy(tensor):
+        if isinstance(tensor, np.ndarray):
+          return tensor
+        return tensor.numpy()
+
+      output_image = yolo_ops.draw_bbox(image=tensor_to_numpy(image).squeeze(),
+                                        bboxes=tensor_to_numpy(boxes),
+                                        scores=tensor_to_numpy(scores),
+                                        classes=tensor_to_numpy(classes),
+                                        num_bboxes=tf.constant([classes.shape[1]]).numpy(),
                                         class_names=class_names)
       
       output_image = tf.image.encode_png(output_image)

@@ -168,6 +168,14 @@ class YoloTask(base_task.Task):
     for name in metric_names:
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
+    if not training:
+      metrics.append(yolo_metrics.AveragePrecisionAtIou(
+        num_classes=self.task_config.model.num_classes, iou=0.25, name='AP25'
+      ))
+      metrics.append(yolo_metrics.AveragePrecisionAtIou(
+        num_classes=self.task_config.model.num_classes, iou=0.5, name='AP50'
+      ))
+
     return metrics
 
   def train_step(self,
@@ -280,9 +288,12 @@ class YoloTask(base_task.Task):
     }
     if metrics:
       # process metrics uses labels and outputs, metrics.mean uses values only
-      for m in metrics:
-        m.update_state(all_losses[m.name])
-        logs.update({m.name: m.result()})
+      for metric in metrics:
+        if 'loss' in metric.name:
+          metric.update_state(all_losses[metric.name])
+        else:
+          metric.update_state(labels['labels'], outputs['predictions'])
+        logs.update({metric.name: metric.result()})
 
     return logs
 
