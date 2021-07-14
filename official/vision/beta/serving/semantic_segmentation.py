@@ -63,7 +63,8 @@ class SegmentationModule(export_base.ExportModule):
         self._input_image_size,
         padded_size=self._input_image_size,
         aug_scale_min=1.0,
-        aug_scale_max=1.0)
+        aug_scale_max=1.0,
+        preserve_aspect_ratio=False)
     return image
 
   def serve(self, images):
