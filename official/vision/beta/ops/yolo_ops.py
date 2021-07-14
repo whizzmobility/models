@@ -3,11 +3,7 @@ Referenced from https://github.com/hunglc007/tensorflow-yolov4-tflite.
 """
 
 from typing import List, Tuple, Mapping
-import random
 
-import cv2
-import colorsys
-import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
@@ -342,58 +338,3 @@ def filter_boxes(box_xywh: tf.Tensor,
     ], axis=-1)
 
     return boxes, pred_conf
-
-
-def read_class_names(class_names_path):
-  """Reads class names from text file.
-  
-  Args:
-    class_names_path: `str`, path to txt file containing classes. Text file
-      should contain one class name per line.
-  """
-  names = {}
-  with open(class_names_path, 'r') as data:
-    for idx, name in enumerate(data):
-      names[idx] = name.strip('\n')
-  return names
-
-
-def draw_bbox(image: np.array, 
-              bboxes: np.array,
-              scores: np.array,
-              classes: np.array,
-              num_bboxes: np.array,
-              class_names: Mapping[int, str], 
-              show_label: bool = True):
-  num_classes = len(class_names)
-  image_h, image_w, _ = image.shape
-  hsv_tuples = [(1.0 * x / num_classes, 1., 1.) for x in range(num_classes)]
-  colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))
-  colors = list(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), colors))
-
-  random.seed(0)
-  random.shuffle(colors)
-  random.seed(None)
-
-  for i in range(num_bboxes[0]):
-    if int(classes[0][i]) < 0 or int(classes[0][i]) > num_classes: continue
-    coor = bboxes[0][i] * [image_h, image_w, image_h, image_w]
-    coor = coor.astype(np.int32)
-
-    fontScale = 0.5
-    score = scores[0][i]
-    class_ind = int(classes[0][i])
-    bbox_color = colors[class_ind]
-    bbox_thick = int(0.6 * (image_h + image_w) / 600)
-    c1, c2 = (coor[1], coor[0]), (coor[3], coor[2])
-    cv2.rectangle(image, c1, c2, bbox_color, bbox_thick)
-
-    if show_label:
-      bbox_mess = '%s: %.2f' % (class_names[class_ind], score)
-      t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick // 2)[0]
-      c3 = (c1[0] + t_size[0], c1[1] - t_size[1] - 3)
-      cv2.rectangle(image, c1, c3, bbox_color, -1) #filled
-
-      cv2.putText(image, bbox_mess, (c1[0], c1[1] - 2), cv2.FONT_HERSHEY_SIMPLEX,
-            fontScale, (0, 0, 0), bbox_thick // 2, lineType=cv2.LINE_AA)
-  return image
