@@ -178,6 +178,8 @@ class MultitaskModule(export_base.ExportModule):
 
       logits = inference_fn(image)
       cls_env, seg_mask, seg_visualised, yolo_boxes, yolo_classes, yolo_scores = logits
+      if yolo_classes.dtype == 'float32':
+        yolo_classes, yolo_scores = yolo_scores, yolo_classes
 
       if save_logits_bin:
         run_lib.write_tensor_as_bin(tensor=image, 
