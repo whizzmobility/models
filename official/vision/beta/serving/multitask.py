@@ -140,3 +140,84 @@ class MultitaskModule(export_base.ExportModule):
           'Try renaming the task routine.' %name)
 
     return processed_outputs
+  
+  def run(self,
+          image_path_glob: str,
+          output_dir: str,
+          preprocess_fn: Callable[[tf.Tensor], tf.Tensor],
+          inference_fn: Callable[[tf.Tensor], tf.Tensor],
+          class_names_path: str,
+          save_logits_bin: bool = False, 
+          *args, **kwargs):
+    """Runs inference graph for the model, for given directory of images
+    
+    Args:
+      image_path_glob: `str`, path pattern for images
+      output_dir: `str`, path to output logs
+      preprocess_fn: `Callable`, takes image tensor of shape (1, height, 
+        width, channels), produces altered image tensor of same shape
+      inference_fn: `Callable`, takes image tensor of shape (1, height, 
+        width, channels), outputs Tensor of shape [batch_size, None, None, 3]
+      class_names_path: `str`, path to txt file containing classes. Text file
+        should contain one class name per line.
+      save_logits_bin: `bool`, flag to save tensors and binary files
+    """
+    cmap = get_colormap(cmap_type='cityscapes').numpy()
+    dataset = run_lib.inference_dataset(image_path_glob=image_path_glob,
+                                        output_dir=output_dir,
+                                        preprocess_fn=preprocess_fn)
+
+    class_names_paths = class_names_path.split(',')
+    if len(class_names_paths) != 2:
+      raise ValueError('Class name paths found: %s' %class_names_paths + \
+        ' , please specify only 2 (cls, yolo).')
+    class_names = [run_lib.read_class_names(class_names_path=path) 
+      for path in class_names_paths]
+    
+    for image, img_filename, save_basename in dataset:
+
+      logits = inference_fn(image)
+      cls_env, seg_mask, seg_visualised, yolo_boxes, yolo_classes, yolo_scores = logits
+
+      if save_logits_bin:
+        run_lib.write_tensor_as_bin(tensor=image, 
+                                    output_path=save_basename + '_input')
+        run_lib.write_tensor_as_bin(tensor=seg_mask, 
+                                    output_path=save_basename + '_mask')
+        run_lib.write_tensor_as_bin(tensor=seg_visualised, 
+                                    output_path=save_basename + '_visualised_mask')
+        run_lib.write_tensor_as_bin(tensor=yolo_boxes, 
+                                    output_path=save_basename + '_boxes')
+        run_lib.write_tensor_as_bin(tensor=yolo_scores, 
+                                    output_path=save_basename + '_scores')
+        run_lib.write_tensor_as_bin(tensor=yolo_classes,
+                                    output_path=save_basename + '_classes')
+
+      image = tf.image.resize(image, self._input_image_size)
+      image = tf.cast(image, tf.uint8)
+
+      def tensor_to_numpy(tensor):
+        if isinstance(tensor, np.ndarray):
+          return tensor
+        return tensor.numpy()      
+
+      output_image = run_lib.draw_bbox(image=tensor_to_numpy(image).squeeze(),
+                                        bboxes=tensor_to_numpy(yolo_boxes),
+                                        scores=tensor_to_numpy(yolo_scores),
+                                        classes=tensor_to_numpy(yolo_classes),
+                                        num_bboxes=tf.constant([yolo_classes.shape[1]]).numpy(),
+                                        class_names=class_names[1])
+      env_val = tensor_to_numpy(cls_env)[0]
+      output_image = run_lib.draw_text(image=output_image, 
+                                       text_list=[class_names[0][env_val]],
+                                       spacing=20)
+      
+      seg_mask = tf.squeeze(seg_mask).numpy()
+      if seg_mask.ndim > 2:
+          seg_mask = np.argmax(seg_mask, axis=-1).astype(np.uint8)
+      seg_mask = cmap[seg_mask]
+      output_image = np.hstack((output_image, seg_mask))
+      
+      output_image = tf.image.encode_png(output_image)
+      tf.io.write_file(save_basename + '.png', output_image)
+      print("Visualised %s, saving result at %s" %(img_filename, save_basename + '.png'))
