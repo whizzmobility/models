@@ -56,6 +56,9 @@ def build_submodel(
       model_config=submodel_config,
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
+  
+  if submodel_config.decoder.freeze:
+    decoder.trainable = False
 
   head_config = submodel_config.head
 
@@ -99,6 +102,9 @@ def build_submodel(
         kernel_regularizer=l2_regularizer)
   else:
     raise NotImplementedError('%s head is not implemented yet.' %(type(head_config)))
+
+  if submodel_config.head.freeze:
+    head.trainable = False
 
   return SegmentationModel(backbone, decoder, head)
   

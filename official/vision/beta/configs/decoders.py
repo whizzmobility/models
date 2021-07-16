@@ -74,6 +74,8 @@ class Decoder(hyperparams.OneOfConfig):
     fpn: fpn config.
   """
   type: Optional[str] = None
+  freeze: bool = False
+
   fpn: FPN = FPN()
   nasfpn: NASFPN = NASFPN()
   identity: Identity = Identity()
