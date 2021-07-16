@@ -20,6 +20,9 @@ def build_multihead_model(
       backbone_config=model_config.backbone,
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
+  
+  if model_config.backbone.freeze:
+    backbone.trainable = False
 
   model = multihead_model.MultiHeadMultiTaskModel(
     backbone=backbone,

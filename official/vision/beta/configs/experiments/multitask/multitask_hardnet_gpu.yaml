@@ -13,6 +13,7 @@ task:
       type: 'hardnet'
       hardnet:
         model_id: 70
+      freeze: true
     norm_activation:
       activation: 'relu'
       norm_epsilon: 0.001

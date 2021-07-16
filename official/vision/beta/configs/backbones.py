@@ -136,6 +136,8 @@ class Backbone(hyperparams.OneOfConfig):
     mobilenet: mobilenet backbone config.
   """
   type: Optional[str] = None
+  freeze: bool = False
+
   resnet: ResNet = ResNet()
   resnest: ResNest = ResNest()
   dilated_resnet: DilatedResNet = DilatedResNet()
