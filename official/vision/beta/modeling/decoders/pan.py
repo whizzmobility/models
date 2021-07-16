@@ -12,8 +12,9 @@ from official.modeling import tf_utils
 layers = tf.keras.layers
 
 PANET_SPECS = {
-  2: [256, 256],
-  3: [256, 128, 256, 512]
+  # number of PA routes: multiplier to num_filters for each PA step
+  2: [1.0, 1.0],
+  3: [1.0, 0.5, 1.0, 2.0]
 }
 
 
@@ -24,6 +25,7 @@ class PAN(tf.keras.Model):
   def __init__(self,
                input_specs,
                routes,
+               num_filters=256,
                activation='relu',
                use_sync_bn=False,
                norm_momentum=0.99,
@@ -40,6 +42,7 @@ class PAN(tf.keras.Model):
       input_specs: `dict` input specifications. A dictionary consists of
         {level: TensorShape} from a backbone.
       routes: number of path aggregation routes
+      num_filters: `int` base number of filters in PAN convolutions.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
@@ -53,6 +56,7 @@ class PAN(tf.keras.Model):
     self._config_dict = {
         'input_specs': input_specs,
         'routes': routes,
+        'num_filters': num_filters,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -97,7 +101,7 @@ class PAN(tf.keras.Model):
     for i in range(routes-1):
       skips.append(deep_route)
       shallow_route = inputs[routeIdx[i+1]]
-      filters = PANET_SPECS[routes][i]
+      filters = int(PANET_SPECS[routes][i] * num_filters)
 
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
       shallow_route = self.conv(shallow_route, filters=filters, kernels=1)
@@ -113,7 +117,7 @@ class PAN(tf.keras.Model):
     
     # aggregate increasing depth, pop skips, store outputs
     for i in range(routes-1):
-      filters = PANET_SPECS[routes][i + routes - 1]
+      filters = int(PANET_SPECS[routes][i + routes - 1] * num_filters)
 
       outputs[str(i)] = self.conv(deep_route, filters=filters, kernels=3)
       deep_route = self.conv(deep_route, filters=filters, kernels=3, downsample=True)
