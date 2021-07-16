@@ -36,8 +36,6 @@ class PAN(tf.keras.Model):
                bias_regularizer=None,
                **kwargs):
     """PAN initialization function.
-    Takes last three levels to perform PAN for YOLOv4.
-    TODO: extend it to support specifying layers
 
     Args:
       input_specs: `dict` input specifications. A dictionary consists of
