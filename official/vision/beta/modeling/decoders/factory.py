@@ -101,6 +101,7 @@ def build_decoder(
         input_specs=input_specs,
         routes=decoder_cfg.levels,
         num_filters=decoder_cfg.num_filters,
+        num_convs=decoder_cfg.num_convs,
         activation=norm_activation_config.activation,
         use_sync_bn=norm_activation_config.use_sync_bn,
         norm_momentum=norm_activation_config.norm_momentum,

@@ -26,6 +26,7 @@ class PAN(tf.keras.Model):
                input_specs,
                routes,
                num_filters=256,
+               num_convs=5,
                activation='relu',
                use_sync_bn=False,
                norm_momentum=0.99,
@@ -43,6 +44,7 @@ class PAN(tf.keras.Model):
         {level: TensorShape} from a backbone.
       routes: number of path aggregation routes
       num_filters: `int` base number of filters in PAN convolutions.
+      num_convs: `int` number of convs for each PAN step
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
@@ -57,6 +59,7 @@ class PAN(tf.keras.Model):
         'input_specs': input_specs,
         'routes': routes,
         'num_filters': num_filters,
+        'num_convs': num_convs,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -76,6 +79,9 @@ class PAN(tf.keras.Model):
       self.bn_axis = -1
     else:
       self.bn_axis = 1
+    
+    if num_convs % 2 == 0:
+      raise ValueError('num_convs in PAN should be an odd number, got %s' %num_convs)
     
     self.norm_momentum = norm_momentum
     self.norm_epsilon = norm_epsilon
@@ -110,10 +116,9 @@ class PAN(tf.keras.Model):
       deep_route = tf.concat([deep_route, shallow_route], axis=self.bn_axis)
 
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
+      for _ in range(num_convs//2):
+        deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
+        deep_route = self.conv(deep_route, filters=filters, kernels=1)
     
     # aggregate increasing depth, pop skips, store outputs
     for i in range(routes-1):
@@ -124,10 +129,9 @@ class PAN(tf.keras.Model):
       deep_route = tf.concat([deep_route, skips.pop()], axis=self.bn_axis)
 
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
+      for _ in range(num_convs//2):
+        deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
+        deep_route = self.conv(deep_route, filters=filters, kernels=1)
 
     outputs[str(routes-1)] = self.conv(deep_route, filters=filters*2, kernels=3)
     self._output_specs = {k: v.get_shape() for k, v in outputs.items()}
