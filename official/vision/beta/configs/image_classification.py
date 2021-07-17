@@ -61,6 +61,7 @@ class ImageClassificationHead(hyperparams.Config):
   # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
   add_head_batch_norm: bool = False
   dropout_rate: float = 0.0
+  freeze: bool = False
 
 
 @dataclasses.dataclass

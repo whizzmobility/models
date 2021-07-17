@@ -74,6 +74,7 @@ class SegmentationHead(hyperparams.Config):
   # deeplabv3plus feature fusion params
   low_level: int = 2
   low_level_num_filters: int = 48
+  freeze: bool = False
 
 
 @dataclasses.dataclass

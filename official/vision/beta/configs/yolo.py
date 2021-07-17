@@ -50,6 +50,7 @@ class YoloHead(hyperparams.Config):
   strides: List[int] = dataclasses.field(default_factory=list)
   anchors: List[int] = dataclasses.field(default_factory=list)
   xy_scale: List[int] = dataclasses.field(default_factory=list)
+  freeze: bool = False
 
 
 @dataclasses.dataclass
