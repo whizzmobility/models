@@ -168,12 +168,12 @@ def read_class_names(class_names_path: str):
   else:
     raise NotImplementedError('File type is not .txt or .json, path %s' %class_names_path)
 
-  if type(list(names.keys())[0]) == int:
+  if type(list(names.keys())[0]) != int:
     raise ValueError('Loaded dict %s has wrong key type %s' %(
-      class_names_path, type(list(names.keys()[0])))) 
-  if type(list(names.values())[0]) == str:
+      class_names_path, type(list(names.keys())[0]))) 
+  if type(list(names.values())[0]) != str:
     raise ValueError('Loaded dict %s has wrong value type %s' %(
-      class_names_path, type(list(names.values()[0]))))
+      class_names_path, type(list(names.values())[0])))
 
   return names
 
