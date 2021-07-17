@@ -190,14 +190,29 @@ def draw_bbox(image: np.array,
               classes: np.array,
               num_bboxes: np.array,
               class_names: Mapping[int, str], 
-              show_label: bool = True):
+              show_label: bool = True,
+              seed: int = 0):
+  """ Draw bounding boxes on given image, and corresponding class and scores.
+  Color palette can be fixed using a seed.
+
+  Args:
+    image: `np.array`, of shape (height, width, 3), denoting RGB image
+    bboxes: `np.array`, of shape (num_boxes, 4), denoting (ymin, xmin, ymax, xmax)
+      coordinates of each bounding box instance
+    scores: `np.array`, of shape (num_boxes), denoting confidence scores (0-1)
+    classes: `np.array`, of shape (num_boxes), denoting class of corresponding bbox
+    num_bboxes: `np.array`, of shape (1), denoting number of bboxes
+    class_names: `dict[int, str]`, mapping each class index to describing string
+    show_label: `bool`, flag to show class and scores
+    seed: `int`, number to set color palette
+  """
   num_classes = len(class_names)
   image_h, image_w, _ = image.shape
   hsv_tuples = [(1.0 * x / num_classes, 1., 1.) for x in range(num_classes)]
   colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))
   colors = list(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), colors))
 
-  random.seed(0)
+  random.seed(seed)
   random.shuffle(colors)
   random.seed(None)
 
