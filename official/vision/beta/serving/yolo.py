@@ -93,14 +93,14 @@ class YoloModule(export_base.ExportModule):
       'scores': scores
     }
 
-  def run(self,
-          image_path_glob: str,
-          output_dir: str,
-          preprocess_fn: Callable[[tf.Tensor], tf.Tensor],
-          inference_fn: Callable[[tf.Tensor], tf.Tensor],
-          class_names_path: str,
-          save_logits_bin: bool = False, 
-          *args, **kwargs):
+  def run_on_image_dir(self,
+                       image_path_glob: str,
+                       output_dir: str,
+                       preprocess_fn: Callable[[tf.Tensor], tf.Tensor],
+                       inference_fn: Callable[[tf.Tensor], tf.Tensor],
+                       class_names_path: str,
+                       save_logits_bin: bool = False, 
+                       *args, **kwargs):
     """Runs inference graph for the model, for given directory of images
     
     Args:
