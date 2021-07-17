@@ -143,7 +143,7 @@ def get_export_module(experiment: str,
   return export_module
 
 
-def read_class_names(class_names_path):
+def read_class_names(class_names_path: str):
   """Reads class names from text file.
   Supports .txt and .json.
   
@@ -176,6 +176,23 @@ def read_class_names(class_names_path):
       class_names_path, type(list(names.values()[0]))))
 
   return names
+
+
+def load_class_names(class_names_paths: str):
+  """Reads all class name .txts and .jsons, in paths separated by commas.
+
+  Args:
+    class_names_paths: Paths separated by commas, to .txt/json class name files.
+      Text file should contain one class name per line.
+      Json file should contain only one dictionary, `Mapping[int, str]`
+  
+  Returns:
+    `List[Mapping[int, str]]`, denoting class index to class name mapping for each
+      class name path specified, separated by commas.
+  """
+  class_names_paths = class_names_paths.split(',')
+  return [read_class_names(class_names_path=path) 
+    for path in class_names_paths]
 
 
 def tensor_to_numpy(tensor):

@@ -163,12 +163,10 @@ class MultitaskModule(export_base.ExportModule):
                                         output_dir=output_dir,
                                         preprocess_fn=preprocess_fn)
 
-    class_names_paths = class_names_path.split(',')
-    if len(class_names_paths) != 2:
-      raise ValueError('Class name paths found: %s' %class_names_paths + \
+    class_names = run_lib.load_class_names(class_names_paths=class_names_path)
+    if len(class_names) != 2:
+      raise ValueError('Class name paths found: %s' %class_names + \
         ' , please specify only 2 (cls, yolo).')
-    class_names = [run_lib.read_class_names(class_names_path=path) 
-      for path in class_names_paths]
     
     for image, img_filename, save_basename in dataset:
 
