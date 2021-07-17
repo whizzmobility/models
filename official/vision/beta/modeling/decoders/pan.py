@@ -12,8 +12,9 @@ from official.modeling import tf_utils
 layers = tf.keras.layers
 
 PANET_SPECS = {
-  2: [256, 256],
-  3: [256, 128, 256, 512]
+  # number of PA routes: multiplier to num_filters for each PA step
+  2: [1.0, 1.0],
+  3: [1.0, 0.5, 1.0, 2.0]
 }
 
 
@@ -24,6 +25,8 @@ class PAN(tf.keras.Model):
   def __init__(self,
                input_specs,
                routes,
+               num_filters=256,
+               num_convs=5,
                activation='relu',
                use_sync_bn=False,
                norm_momentum=0.99,
@@ -33,13 +36,13 @@ class PAN(tf.keras.Model):
                bias_regularizer=None,
                **kwargs):
     """PAN initialization function.
-    Takes last three levels to perform PAN for YOLOv4.
-    TODO: extend it to support specifying layers
 
     Args:
       input_specs: `dict` input specifications. A dictionary consists of
         {level: TensorShape} from a backbone.
       routes: number of path aggregation routes
+      num_filters: `int` base number of filters in PAN convolutions.
+      num_convs: `int` number of convs for each PAN step
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
@@ -53,6 +56,8 @@ class PAN(tf.keras.Model):
     self._config_dict = {
         'input_specs': input_specs,
         'routes': routes,
+        'num_filters': num_filters,
+        'num_convs': num_convs,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -72,6 +77,9 @@ class PAN(tf.keras.Model):
       self.bn_axis = -1
     else:
       self.bn_axis = 1
+    
+    if num_convs % 2 == 0:
+      raise ValueError('num_convs in PAN should be an odd number, got %s' %num_convs)
     
     self.norm_momentum = norm_momentum
     self.norm_epsilon = norm_epsilon
@@ -97,7 +105,7 @@ class PAN(tf.keras.Model):
     for i in range(routes-1):
       skips.append(deep_route)
       shallow_route = inputs[routeIdx[i+1]]
-      filters = PANET_SPECS[routes][i]
+      filters = int(PANET_SPECS[routes][i] * num_filters)
 
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
       shallow_route = self.conv(shallow_route, filters=filters, kernels=1)
@@ -106,24 +114,22 @@ class PAN(tf.keras.Model):
       deep_route = tf.concat([deep_route, shallow_route], axis=self.bn_axis)
 
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
+      for _ in range(num_convs//2):
+        deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
+        deep_route = self.conv(deep_route, filters=filters, kernels=1)
     
     # aggregate increasing depth, pop skips, store outputs
     for i in range(routes-1):
-      filters = PANET_SPECS[routes][i + routes - 1]
+      filters = int(PANET_SPECS[routes][i + routes - 1] * num_filters)
 
       outputs[str(i)] = self.conv(deep_route, filters=filters, kernels=3)
       deep_route = self.conv(deep_route, filters=filters, kernels=3, downsample=True)
       deep_route = tf.concat([deep_route, skips.pop()], axis=self.bn_axis)
 
       deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
-      deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
-      deep_route = self.conv(deep_route, filters=filters, kernels=1)
+      for _ in range(num_convs//2):
+        deep_route = self.conv(deep_route, filters=filters*2, kernels=3)
+        deep_route = self.conv(deep_route, filters=filters, kernels=1)
 
     outputs[str(routes-1)] = self.conv(deep_route, filters=filters*2, kernels=3)
     self._output_specs = {k: v.get_shape() for k, v in outputs.items()}
