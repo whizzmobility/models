@@ -22,6 +22,9 @@ from official.vision.beta.serving import semantic_segmentation
 from official.vision.beta.serving import yolo
 from official.vision.beta.serving import multitask
 
+IMAGENET_MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
+IMAGENET_STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
+
 
 def define_flags():
   """Defines flags specific for running inferences."""
