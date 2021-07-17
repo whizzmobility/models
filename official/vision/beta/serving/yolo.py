@@ -142,15 +142,10 @@ class YoloModule(export_base.ExportModule):
       image = tf.image.resize(image, self._input_image_size)
       image = tf.cast(image, tf.uint8)
 
-      def tensor_to_numpy(tensor):
-        if isinstance(tensor, np.ndarray):
-          return tensor
-        return tensor.numpy()
-
-      output_image = run_lib.draw_bbox(image=tensor_to_numpy(image).squeeze(),
-                                       bboxes=tensor_to_numpy(boxes),
-                                       scores=tensor_to_numpy(scores),
-                                       classes=tensor_to_numpy(classes),
+      output_image = run_lib.draw_bbox(image=run_lib.tensor_to_numpy(image).squeeze(),
+                                       bboxes=run_lib.tensor_to_numpy(boxes),
+                                       scores=run_lib.tensor_to_numpy(scores),
+                                       classes=run_lib.tensor_to_numpy(classes),
                                        num_bboxes=tf.constant([classes.shape[1]]).numpy(),
                                        class_names=class_names)
       

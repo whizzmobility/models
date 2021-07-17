@@ -176,6 +176,12 @@ def read_class_names(class_names_path):
   return names
 
 
+def tensor_to_numpy(tensor):
+  if isinstance(tensor, np.ndarray):
+    return tensor
+  return tensor.numpy()  
+
+
 def draw_bbox(image: np.array, 
               bboxes: np.array,
               scores: np.array,

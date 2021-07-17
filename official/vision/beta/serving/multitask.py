@@ -194,18 +194,13 @@ class MultitaskModule(export_base.ExportModule):
       image = tf.image.resize(image, self._input_image_size)
       image = tf.cast(image, tf.uint8)
 
-      def tensor_to_numpy(tensor):
-        if isinstance(tensor, np.ndarray):
-          return tensor
-        return tensor.numpy()      
-
-      output_image = run_lib.draw_bbox(image=tensor_to_numpy(image).squeeze(),
-                                        bboxes=tensor_to_numpy(yolo_boxes),
-                                        scores=tensor_to_numpy(yolo_scores),
-                                        classes=tensor_to_numpy(yolo_classes),
-                                        num_bboxes=tf.constant([yolo_classes.shape[1]]).numpy(),
-                                        class_names=class_names[1])
-      env_val = tensor_to_numpy(cls_env)[0]
+      output_image = run_lib.draw_bbox(image=run_lib.tensor_to_numpy(image).squeeze(),
+                                       bboxes=run_lib.tensor_to_numpy(yolo_boxes),
+                                       scores=run_lib.tensor_to_numpy(yolo_scores),
+                                       classes=run_lib.tensor_to_numpy(yolo_classes),
+                                       num_bboxes=tf.constant([yolo_classes.shape[1]]).numpy(),
+                                       class_names=class_names[1])
+      env_val = run_lib.tensor_to_numpy(cls_env)[0]
       output_image = run_lib.draw_text(image=output_image, 
                                        text_list=[class_names[0][env_val]],
                                        spacing=20)
