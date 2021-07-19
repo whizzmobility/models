@@ -1,13 +1,17 @@
 r"""Vision models run inference utility function."""
 
-from typing import Callable, Optional
+from typing import Callable, Optional, List, Mapping
 import os
 import glob
+import json
+import random
+import colorsys
 
 from absl import flags
+import cv2
+import numpy as np
 import tensorflow as tf
 
-# from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.vision.beta import configs
@@ -17,6 +21,9 @@ from official.vision.beta.serving import image_classification
 from official.vision.beta.serving import semantic_segmentation
 from official.vision.beta.serving import yolo
 from official.vision.beta.serving import multitask
+
+IMAGENET_MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
+IMAGENET_STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 
 
 def define_flags():
@@ -32,7 +39,8 @@ def define_flags():
   # optional flags, supplied as kwargs
   flags.DEFINE_boolean('visualise', None, '(Segmentation) Flag to visualise mask.')
   flags.DEFINE_boolean('stitch_original', None, '(Segmentation) Flag to stitch image at the side.')
-  flags.DEFINE_string('class_names_path', None, '(Yolo) Txt file with class names.')
+  flags.DEFINE_string('class_names_path', None, '(Yolo/Cls) Csv of paths to txt' + \
+    ' files with class names.')
 
 
 def inference_dataset(image_path_glob: str,
@@ -133,3 +141,137 @@ def get_export_module(experiment: str,
         type(params.task)))
 
   return export_module
+
+
+def read_class_names(class_names_path: str):
+  """Reads class names from text file.
+  Supports .txt and .json.
+  
+  Args:
+    class_names_path: `str`, path to json/txt file containing classes. 
+      Text file should contain one class name per line.
+      Json file should contain only one dictionary, `Mapping[int, str]`
+  """
+  
+  names = {}
+  if class_names_path.endswith('.txt'):
+    with open(class_names_path, 'r') as data:
+      for idx, name in enumerate(data):
+        names[idx] = name.strip('\n')
+  
+  elif class_names_path.endswith('.json'):
+    with open(class_names_path) as f:
+      names = json.load(f)
+    if type(list(names.keys())[0]) == str and type(list(names.values())[0]) == int:
+      names = dict((v,k) for k,v in names.items())
+
+  else:
+    raise NotImplementedError('File type is not .txt or .json, path %s' %class_names_path)
+
+  if type(list(names.keys())[0]) != int:
+    raise ValueError('Loaded dict %s has wrong key type %s' %(
+      class_names_path, type(list(names.keys())[0]))) 
+  if type(list(names.values())[0]) != str:
+    raise ValueError('Loaded dict %s has wrong value type %s' %(
+      class_names_path, type(list(names.values())[0])))
+
+  return names
+
+
+def load_class_names(class_names_paths: str):
+  """Reads all class name .txts and .jsons, in paths separated by commas.
+
+  Args:
+    class_names_paths: Paths separated by commas, to .txt/json class name files.
+      Text file should contain one class name per line.
+      Json file should contain only one dictionary, `Mapping[int, str]`
+  
+  Returns:
+    `List[Mapping[int, str]]`, denoting class index to class name mapping for each
+      class name path specified, separated by commas.
+  """
+  class_names_paths = class_names_paths.split(',')
+  return [read_class_names(class_names_path=path) 
+    for path in class_names_paths]
+
+
+def tensor_to_numpy(tensor):
+  if isinstance(tensor, np.ndarray):
+    return tensor
+  return tensor.numpy()  
+
+
+def draw_bbox(image: np.array, 
+              bboxes: np.array,
+              scores: np.array,
+              classes: np.array,
+              num_bboxes: np.array,
+              class_names: Mapping[int, str], 
+              show_label: bool = True,
+              seed: int = 0):
+  """ Draw bounding boxes on given image, and corresponding class and scores.
+  Color palette can be fixed using a seed.
+
+  Args:
+    image: `np.array`, of shape (height, width, 3), denoting RGB image
+    bboxes: `np.array`, of shape (num_boxes, 4), denoting (ymin, xmin, ymax, xmax)
+      coordinates of each bounding box instance
+    scores: `np.array`, of shape (num_boxes), denoting confidence scores (0-1)
+    classes: `np.array`, of shape (num_boxes), denoting class of corresponding bbox
+    num_bboxes: `np.array`, of shape (1), denoting number of bboxes
+    class_names: `dict[int, str]`, mapping each class index to describing string
+    show_label: `bool`, flag to show class and scores
+    seed: `int`, number to set color palette
+  """
+  num_classes = len(class_names)
+  image_h, image_w, _ = image.shape
+  hsv_tuples = [(1.0 * x / num_classes, 1., 1.) for x in range(num_classes)]
+  colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))
+  colors = list(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), colors))
+
+  random.seed(seed)
+  random.shuffle(colors)
+  random.seed(None)
+
+  for i in range(num_bboxes[0]):
+    if int(classes[0][i]) < 0 or int(classes[0][i]) > num_classes: continue
+    coor = bboxes[0][i] * [image_h, image_w, image_h, image_w]
+    coor = coor.astype(np.int32)
+
+    fontScale = 0.5
+    score = scores[0][i]
+    class_ind = int(classes[0][i])
+    bbox_color = colors[class_ind]
+    bbox_thick = int(0.6 * (image_h + image_w) / 600)
+    c1, c2 = (coor[1], coor[0]), (coor[3], coor[2])
+    cv2.rectangle(image, c1, c2, bbox_color, bbox_thick)
+
+    if show_label:
+      bbox_mess = '%s: %.2f' % (class_names[class_ind], score)
+      t_size = cv2.getTextSize(bbox_mess, 0, fontScale, thickness=bbox_thick // 2)[0]
+      c3 = (c1[0] + t_size[0], c1[1] - t_size[1] - 3)
+      cv2.rectangle(image, c1, c3, bbox_color, -1) #filled
+
+      cv2.putText(image, bbox_mess, (c1[0], c1[1] - 2), cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale, (0, 0, 0), bbox_thick // 2, lineType=cv2.LINE_AA)
+  return image
+
+
+def draw_text(image: np.array, 
+              text_list: List[str],
+              spacing: int = 50):
+    """ Writes list of messages on image, separated by newline 
+    
+    Args:
+      image: `np.array`, of shape (height, width, 3), RGB image
+      text_list: `List[str]`, list of texts to write on each line
+      spacing: `int`, spacing in pixels
+    """
+
+    pos = spacing
+    for text in text_list:
+        image = cv2.putText(image, text,
+                            (spacing, pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        pos += spacing
+
+    return image

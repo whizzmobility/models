@@ -11,10 +11,6 @@ from official.vision.beta.serving import export_base, run_lib
 from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
 
 
-MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
-STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
-
-
 class YoloModule(export_base.ExportModule):
   """YOLO Module."""
 
@@ -32,8 +28,8 @@ class YoloModule(export_base.ExportModule):
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image,
-                                           offset=MEAN_RGB,
-                                           scale=STDDEV_RGB)
+                                           offset=run_lib.IMAGENET_MEAN_RGB,
+                                           scale=run_lib.IMAGENET_STDDEV_RGB)
 
     image, _ = preprocess_ops.resize_and_crop_image(
         image,
@@ -97,14 +93,14 @@ class YoloModule(export_base.ExportModule):
       'scores': scores
     }
 
-  def run(self,
-          image_path_glob: str,
-          output_dir: str,
-          preprocess_fn: Callable[[tf.Tensor], tf.Tensor],
-          inference_fn: Callable[[tf.Tensor], tf.Tensor],
-          class_names_path: str,
-          save_logits_bin: bool = False, 
-          *args, **kwargs):
+  def run_on_image_dir(self,
+                       image_path_glob: str,
+                       output_dir: str,
+                       preprocess_fn: Callable[[tf.Tensor], tf.Tensor],
+                       inference_fn: Callable[[tf.Tensor], tf.Tensor],
+                       class_names_path: str,
+                       save_logits_bin: bool = False, 
+                       *args, **kwargs):
     """Runs inference graph for the model, for given directory of images
     
     Args:
@@ -122,6 +118,7 @@ class YoloModule(export_base.ExportModule):
     dataset = run_lib.inference_dataset(image_path_glob=image_path_glob,
                                         output_dir=output_dir,
                                         preprocess_fn=preprocess_fn)
+    class_names = run_lib.read_class_names(class_names_path=class_names_path)
     
     for image, img_filename, save_basename in dataset:
 
@@ -138,23 +135,19 @@ class YoloModule(export_base.ExportModule):
         run_lib.write_tensor_as_bin(tensor=boxes, 
                                     output_path=save_basename + '_boxes')
         run_lib.write_tensor_as_bin(tensor=scores, 
-                                    output_path=save_basename + 'scores')
+                                    output_path=save_basename + '_scores')
+        run_lib.write_tensor_as_bin(tensor=classes,
+                                    output_path=save_basename + '_classes')
 
       image = tf.image.resize(image, self._input_image_size)
       image = tf.cast(image, tf.uint8)
-      class_names = yolo_ops.read_class_names(class_names_path=class_names_path)
 
-      def tensor_to_numpy(tensor):
-        if isinstance(tensor, np.ndarray):
-          return tensor
-        return tensor.numpy()
-
-      output_image = yolo_ops.draw_bbox(image=tensor_to_numpy(image).squeeze(),
-                                        bboxes=tensor_to_numpy(boxes),
-                                        scores=tensor_to_numpy(scores),
-                                        classes=tensor_to_numpy(classes),
-                                        num_bboxes=tf.constant([classes.shape[1]]).numpy(),
-                                        class_names=class_names)
+      output_image = run_lib.draw_bbox(image=run_lib.tensor_to_numpy(image).squeeze(),
+                                       bboxes=run_lib.tensor_to_numpy(boxes),
+                                       scores=run_lib.tensor_to_numpy(scores),
+                                       classes=run_lib.tensor_to_numpy(classes),
+                                       num_bboxes=tf.constant([classes.shape[1]]).numpy(),
+                                       class_names=class_names)
       
       output_image = tf.image.encode_png(output_image)
       tf.io.write_file(save_basename + '.png', output_image)

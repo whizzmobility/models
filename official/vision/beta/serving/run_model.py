@@ -28,14 +28,14 @@ def main(_):
     outputs = export_module.serve(images)
     return [v for k, v in outputs.items()]
   
-  export_module.run(image_path_glob=FLAGS.image_path_glob, 
-                    output_dir=FLAGS.output_dir,
-                    preprocess_fn=None,
-                    inference_fn=inference_fn, 
-                    visualise=FLAGS.visualise, 
-                    stitch_original=FLAGS.stitch_original,
-                    class_names_path=FLAGS.class_names_path,
-                    save_logits_bin=FLAGS.save_logits_bin)
+  export_module.run_on_image_dir(image_path_glob=FLAGS.image_path_glob, 
+                                 output_dir=FLAGS.output_dir,
+                                 preprocess_fn=None,
+                                 inference_fn=inference_fn, 
+                                 visualise=FLAGS.visualise, 
+                                 stitch_original=FLAGS.stitch_original,
+                                 class_names_path=FLAGS.class_names_path,
+                                 save_logits_bin=FLAGS.save_logits_bin)
 
 
 if __name__ == '__main__':
