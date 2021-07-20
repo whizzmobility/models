@@ -549,8 +549,7 @@ class YOLOv3Head(tf.keras.layers.Layer):
       outputs['raw_outputs'][str(i)] = x
 
       x_shape = x.shape
-      x = tf.reshape(x,
-                    (-1, x_shape[1], x_shape[2], 3, 5 + self.num_classes))
+      x = tf.stack(tf.split(x, 3, axis=-1), axis=-2) # [b, h, w, x] -> [b, h, w, 3, x/3]
 
       raw_dxdy, raw_dwdh, raw_conf, raw_prob = tf.split(x, (2, 2, 1, self.num_classes),
                                                         axis=self._bn_axis)

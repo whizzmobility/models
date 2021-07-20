@@ -233,14 +233,14 @@ def draw_bbox(image: np.array,
   random.shuffle(colors)
   random.seed(None)
 
-  for i in range(num_bboxes[0]):
-    if int(classes[0][i]) < 0 or int(classes[0][i]) > num_classes: continue
-    coor = bboxes[0][i] * [image_h, image_w, image_h, image_w]
+  for i in range(num_bboxes):
+    if int(classes[i]) < 0 or int(classes[i]) > num_classes: continue
+    coor = bboxes[i] * [image_h, image_w, image_h, image_w]
     coor = coor.astype(np.int32)
 
     fontScale = 0.5
-    score = scores[0][i]
-    class_ind = int(classes[0][i])
+    score = scores[i]
+    class_ind = int(classes[i])
     bbox_color = colors[class_ind]
     bbox_thick = int(0.6 * (image_h + image_w) / 600)
     c1, c2 = (coor[1], coor[0]), (coor[3], coor[2])

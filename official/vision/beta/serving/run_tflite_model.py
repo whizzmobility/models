@@ -38,7 +38,7 @@ def main(_):
 
   export_module.run_on_image_dir(image_path_glob=FLAGS.image_path_glob, 
                                  output_dir=FLAGS.output_dir,
-                                 preprocess_fn=None,
+                                 preprocess_fn=preprocess_fn,
                                  inference_fn=inference_fn, 
                                  visualise=FLAGS.visualise, 
                                  stitch_original=FLAGS.stitch_original,

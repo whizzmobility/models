@@ -114,7 +114,7 @@ class MultitaskModule(export_base.ExportModule):
         boxes = tf.squeeze(yolo_box_ops.xcycwh_to_yxyx(boxes))
         scores = tf.concat(prob_tensors, axis=1)
         scores = tf.squeeze(tf.math.reduce_max(scores, axis=-1))
-        classes = tf.argmax(prob_tensors, axis=-1)
+        classes = tf.squeeze(tf.math.argmax(prob_tensors, axis=-1))
         
         indices = tf.image.non_max_suppression(boxes=boxes,
                                                scores=scores,
@@ -122,10 +122,9 @@ class MultitaskModule(export_base.ExportModule):
                                                iou_threshold=0.5,
                                                score_threshold=0.25)
         
-        boxes = tf.expand_dims(tf.gather(boxes, indices), axis=0)
-        boxes = box_ops.normalize_boxes(boxes, self._input_image_size)
-        scores = tf.expand_dims(tf.gather(scores, indices), axis=0)
-        classes = tf.gather(classes, indices, axis=1)
+        boxes = tf.gather(boxes, indices)
+        scores = tf.gather(scores, indices)
+        classes = tf.gather(classes, indices)
 
         processed_outputs[name + 'boxes'] = boxes
         processed_outputs[name + 'classes'] = classes
@@ -191,12 +190,13 @@ class MultitaskModule(export_base.ExportModule):
 
       image = tf.image.resize(image, self._input_image_size)
       image = tf.cast(image, tf.uint8)
+      yolo_boxes = box_ops.normalize_boxes(yolo_boxes, self._input_image_size)
 
       output_image = run_lib.draw_bbox(image=run_lib.tensor_to_numpy(image).squeeze(),
                                        bboxes=run_lib.tensor_to_numpy(yolo_boxes),
                                        scores=run_lib.tensor_to_numpy(yolo_scores),
                                        classes=run_lib.tensor_to_numpy(yolo_classes),
-                                       num_bboxes=tf.constant([yolo_classes.shape[1]]).numpy(),
+                                       num_bboxes=tf.constant(yolo_classes.shape[0]).numpy(),
                                        class_names=class_names[1])
       env_val = run_lib.tensor_to_numpy(cls_env)[0]
       output_image = run_lib.draw_text(image=output_image, 
