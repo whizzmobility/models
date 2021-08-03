@@ -176,6 +176,17 @@ class YoloTask(base_task.Task):
         num_classes=self.task_config.model.num_classes, iou=0.5, name='AP50'
       ))
 
+      # add in class specific metrics
+      for class_num in self.task_config.model.num_classes:
+        metrics.append(yolo_metrics.AveragePrecisionAtIou(
+          num_classes=self.task_config.model.num_classes, iou=0.25, name='AP25',
+          class_id=class_num
+        ))
+        metrics.append(yolo_metrics.AveragePrecisionAtIou(
+          num_classes=self.task_config.model.num_classes, iou=0.5, name='AP50',
+          class_id=class_num
+        ))
+
     return metrics
 
   def train_step(self,
