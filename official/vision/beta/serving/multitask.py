@@ -19,10 +19,12 @@ class MultitaskModule(export_base.ExportModule):
   def __init__(self, 
                argmax_outputs: bool = True, 
                visualise_outputs: bool = True, 
+               class_present_outputs: bool = True,
                *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._argmax_outputs = argmax_outputs
     self._visualise_outputs = argmax_outputs and visualise_outputs
+    self._class_present_outputs = argmax_outputs and class_present_outputs
 
   def _build_model(self):
     input_specs = tf.keras.layers.InputSpec(
@@ -91,13 +93,21 @@ class MultitaskModule(export_base.ExportModule):
         processed_outputs[name] = output
 
       elif 'segmentation' in name:
+        num_classes = output.shape[-1]
+
+        if self._class_present_outputs:
+          flattened_output = tf.math.argmax(tf.reshape(output, [-1, num_classes]), -1)
+          one_hotted = tf.one_hot(flattened_output, 19, axis=0)
+          class_counts = tf.reduce_sum(one_hotted, axis=-1)
+          processed_outputs[name + '_class_count'] = class_counts
+
         output = tf.image.resize(
           output, self._input_image_size, method='bilinear')      
-        
+
         if self._argmax_outputs:
-          output = tf.math.argmax(output, -1)
+          output = tf.math.argmax(output, -1)  
         processed_outputs[name] = output
-        
+
         if self._visualise_outputs and len(output.shape) == 3:
           colormap = get_colormap(cmap_type='cityscapes_int')
           processed_outputs[name + '_visualised'] = tf.gather(
@@ -170,7 +180,11 @@ class MultitaskModule(export_base.ExportModule):
     for image, img_filename, save_basename in dataset:
 
       logits = inference_fn(image)
-      cls_env, seg_mask, seg_visualised, yolo_boxes, yolo_classes, yolo_scores = logits
+      if len(logits) != 7:
+        raise NotImplementedError("Inferences for multitask only implemented for " +\
+          "argmax_outputs=True, visualise_outputs=True, class_present_outputs=True.")
+
+      cls_env, seg_mask, seg_visualised, is_classes_present, yolo_boxes, yolo_classes, yolo_scores = logits
       if yolo_classes.dtype == 'float32':
         yolo_classes, yolo_scores = yolo_scores, yolo_classes
 

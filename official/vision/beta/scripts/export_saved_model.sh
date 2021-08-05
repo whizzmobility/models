@@ -11,4 +11,5 @@ python ../serving/export_saved_model.py \
     --config_file="../configs/experiments/${TASK_TYPE}/${CONFIG_FILENAME}.yaml" \
     --input_type="image_tensor" \
     --argmax_outputs \
-    --visualise_outputs
+    --visualise_outputs \
+    --class_present_outputs

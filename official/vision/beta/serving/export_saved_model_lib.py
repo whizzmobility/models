@@ -45,7 +45,8 @@ def export_inference_graph(
     export_saved_model_subdir: Optional[str] = None,
     save_options: Optional[tf.saved_model.SaveOptions] = None,
     argmax_outputs: bool = False,
-    visualise_outputs: bool = False):
+    visualise_outputs: bool = False,
+    class_present_outputs: bool = False):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -67,8 +68,11 @@ def export_inference_graph(
     export_saved_model_subdir: Optional subdirectory under export_dir
       to store saved model.
     save_options: `SaveOptions` for `tf.saved_model.save`.
+
+  (applicable for Segmentation and MultiTask export definitions only)
     argmax_outputs: Set true to argmax the last channel of all outputs.
     visualise_outputs: Set true to apply colormap to all single channel outputs.
+    class_present_outputs: Set true to gather unique values of outputs.
   """
 
   if export_checkpoint_subdir:
@@ -121,7 +125,8 @@ def export_inference_graph(
           input_image_size=input_image_size,
           num_channels=num_channels,
           argmax_outputs=argmax_outputs,
-          visualise_outputs=visualise_outputs)
+          visualise_outputs=visualise_outputs,
+          class_present_outputs=class_present_outputs)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))

@@ -75,6 +75,7 @@ flags.DEFINE_string(
     'of the input to the model.')
 flags.DEFINE_bool('argmax_outputs', False, 'Argmax the last channel of all outputs.')
 flags.DEFINE_bool('visualise_outputs', False, 'Apply colormap to all single channel outputs.')
+flags.DEFINE_bool('class_present_outputs', False, 'Gather unique values in output.')
 
 
 def main(_):
@@ -100,7 +101,8 @@ def main(_):
       export_checkpoint_subdir='checkpoint',
       export_saved_model_subdir='saved_model',
       argmax_outputs=FLAGS.argmax_outputs,
-      visualise_outputs=FLAGS.visualise_outputs)
+      visualise_outputs=FLAGS.visualise_outputs,
+      class_present_outputs=FLAGS.class_present_outputs)
 
 
 if __name__ == '__main__':
