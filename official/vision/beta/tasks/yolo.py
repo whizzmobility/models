@@ -16,6 +16,7 @@ from official.vision.beta.losses import yolo_losses
 from official.vision.beta.modeling import factory
 from official.vision.beta.ops import box_ops
 from orbit.utils import SummaryManager
+from official.vision.beta.evaluation import yolo_metrics
 
 
 @task_factory.register_task_cls(multitask_config.YoloSubtask)
