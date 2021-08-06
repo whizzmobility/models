@@ -16,6 +16,7 @@ from official.vision.beta.losses import yolo_losses
 from official.vision.beta.modeling import factory
 from official.vision.beta.ops import box_ops
 from orbit.utils import SummaryManager
+from official.vision.beta.evaluation import yolo_metrics
 
 
 @task_factory.register_task_cls(multitask_config.YoloSubtask)
@@ -175,6 +176,19 @@ class YoloTask(base_task.Task):
       metrics.append(yolo_metrics.AveragePrecisionAtIou(
         num_classes=self.task_config.model.num_classes, iou=0.5, name='AP50'
       ))
+
+      # add in class specific metrics
+      for class_num in range(self.task_config.model.num_classes):
+        metrics.append(yolo_metrics.AveragePrecisionAtIou(
+          num_classes=self.task_config.model.num_classes, iou=0.25, 
+          name='precision_%s' %str(class_num),
+          class_id=class_num
+        ))
+        metrics.append(yolo_metrics.AveragePrecisionAtIou(
+          num_classes=self.task_config.model.num_classes, iou=0.5, 
+          name='precision_%s' %str(class_num),
+          class_id=class_num
+        ))
 
     return metrics
 
