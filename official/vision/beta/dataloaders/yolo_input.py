@@ -11,6 +11,7 @@ from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
 STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
+MAX_DISPLAY_BBOX = 50
 
 
 class Decoder(decoder.Decoder):
@@ -220,13 +221,15 @@ class Parser(parser.Parser):
       strides=self.strides,
       anchors=self.anchors)
     
-    # pad / limit to 10 boxes for constant size
+    # TODO: Figure out why we need to fix the num BBOX if not there will be an error
+    # https://github.com/whizzmobility/models/pull/61
+    # pad / limit to MAX_DISPLAY_BBOX boxes for constant size
     raw_bboxes = boxes
     num_bboxes = tf.shape(raw_bboxes)[0]
-    if num_bboxes > 10:
-      raw_bboxes = raw_bboxes[:, :10]
+    if num_bboxes > MAX_DISPLAY_BBOX:
+      raw_bboxes = raw_bboxes[:, :MAX_DISPLAY_BBOX]
     else:
-      paddings = tf.stack([0, 10-num_bboxes], axis=-1)
+      paddings = tf.stack([0, MAX_DISPLAY_BBOX-num_bboxes], axis=-1)
       paddings = tf.stack([paddings, [0,0]], axis=0)
       raw_bboxes = tf.pad(raw_bboxes, paddings)
 
