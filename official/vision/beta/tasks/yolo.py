@@ -172,7 +172,7 @@ class YoloTask(base_task.Task):
     if not training:
       for iou in [0.25,0.50,0.75]:
         metrics.append(yolo_metrics.AveragePrecisionAtIou(
-          num_classes=self.task_config.model.num_classes, iou=iou, name='AP{}'.format(iou*100)
+          num_classes=self.task_config.model.num_classes, iou=iou, name='AP{}'.format(int(iou*100))
         ))
 
         # add in class specific metrics
