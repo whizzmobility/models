@@ -139,10 +139,10 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
   input_path_segmentation = ''
   input_path_classification = ''
   input_path_yolo = ''
-  steps_per_epoch = 6915
+  steps_per_epoch = 6915+2486+600
   train_batch_size = 1
   eval_batch_size = 1
-  validation_steps = 6915
+  validation_steps = 1021+621+600
 
   segmentation_routine = multi_cfg.TaskRoutine(
     task_name='segmentation',
@@ -174,7 +174,7 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
           is_training=False,
           resize_eval_groundtruth=True,
           drop_remainder=False)),
-    eval_steps=None, # check where eval steps is used
+    eval_steps=603, # check where eval steps is used
     task_weight=1.0
   )
   classification_routine = multi_cfg.TaskRoutine(
@@ -198,7 +198,7 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
           global_batch_size=eval_batch_size,
           drop_remainder=False)
     ),
-    eval_steps=None, # check where eval steps is used
+    eval_steps=621, # check where eval steps is used
     task_weight=1.0
   )
   yolo_routine = multi_cfg.TaskRoutine(
@@ -228,7 +228,7 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
           global_batch_size=eval_batch_size,
           drop_remainder=False)
     ),
-    eval_steps=None, # check where eval steps is used
+    eval_steps=600, # check where eval steps is used
     task_weight=1.0
   )
   
