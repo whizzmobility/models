@@ -66,24 +66,27 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
       Overall Precision at IoU threshold
     """
 
-    bbox_true, _, prob_true = yolo_ops.concat_tensor_dict(
-      tensor_dict=y_true,
-      num_classes=self.num_classes)
-    bbox_pred, conf_pred, prob_pred = yolo_ops.concat_tensor_dict(
-      tensor_dict=y_pred,
-      num_classes=self.num_classes)
-
-    conf_mask = conf_pred > self.conf_thres
-    iou = yolo_ops.bbox_iou(bbox_true, bbox_pred)
-    iou_mask = iou > self.iou_thres
-    combined_mask = tf.math.logical_or(conf_mask, iou_mask)
-
-    # check sufficient confidence and iou
-    prob_pred = tf.boolean_mask(prob_pred, combined_mask)
-    prob_pred = tf.argmax(prob_pred, axis=-1)
-    prob_pred = tf.one_hot(prob_pred, self.num_classes, on_value=True, off_value=False)
+    bbox_true, _, prob_true = yolo_ops.concat_tensor_dict(tensor_dict=y_true,num_classes=self.num_classes)
+    bbox_pred, conf_pred, prob_pred = yolo_ops.concat_tensor_dict(tensor_dict=y_pred,num_classes=self.num_classes)
 
     # filter out predictions with insufficient confidence (ignore false negatives)
+    # done first to preserve shape when applying updates for iou threshold
+    conf_mask = conf_pred > self.conf_thres
+    
+    bbox_pred = tf.boolean_mask(bbox_pred, conf_mask)
+    bbox_true = tf.boolean_mask(bbox_true, conf_mask)
+    iou = yolo_ops.bbox_iou(bbox_true, bbox_pred)
+    iou_mask = iou > self.iou_thres
+
+    # check sufficient confidence and iou
+    prob_pred = tf.boolean_mask(prob_pred, conf_mask)
+    prob_pred = tf.argmax(prob_pred, axis=-1)
+    prob_pred = tf.one_hot(prob_pred, self.num_classes, on_value=True, off_value=False)
+    
+    # zero out those where iou < threshold, (indicate false positives)
+    iou_mask = tf.expand_dims(iou_mask, -1)
+    prob_pred = tf.where(iou_mask, prob_pred, tf.fill([self.num_classes], False))
+    
     prob_true = tf.boolean_mask(prob_true, conf_mask)
     prob_true = tf.argmax(prob_true, axis=-1)
     prob_true = tf.one_hot(prob_true, self.num_classes, on_value=True, off_value=False)
