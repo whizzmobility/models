@@ -54,7 +54,9 @@ task:
         decoder: {
           type: 'pan',
           pan: {
-            levels: 3}},
+            levels: 3,
+            num_filters: 128,
+            num_convs: 3}},
         head: {
           anchor_per_scale: 3,
           strides: [16, 32, 64],  # depends on downsampling on model side
