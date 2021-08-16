@@ -65,7 +65,7 @@ class YoloModule(export_base.ExportModule):
     outputs = self.inference_step(images) # tf.keras.Model's __call__ method
 
     num_classes = outputs['predictions']['0'].shape[-1] - 5
-    bbox_tensors, prob_tensors = yolo_ops.concat_tensor_dict(
+    bbox_tensors, _, prob_tensors = yolo_ops.concat_tensor_dict(
       tensor_dict=outputs['predictions'], 
       num_classes=num_classes
     )
