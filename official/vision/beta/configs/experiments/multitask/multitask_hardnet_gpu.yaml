@@ -188,7 +188,7 @@ trainer:
   
   best_checkpoint_eval_metric: 'mean_iou' ###
   continuous_eval_timeout: 3600
-  max_to_keep: 100
+  max_to_keep: 5
   optimizer_config:
     ema: null
     learning_rate:
