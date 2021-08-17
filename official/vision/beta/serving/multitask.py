@@ -115,7 +115,7 @@ class MultitaskModule(export_base.ExportModule):
       
       elif 'yolo' in name:
         num_classes = output['predictions']['0'].shape[-1] - 5
-        bbox_tensors, prob_tensors = yolo_ops.concat_tensor_dict(
+        bbox_tensors, _, prob_tensors = yolo_ops.concat_tensor_dict(
           tensor_dict=output['predictions'], 
           num_classes=num_classes
         )

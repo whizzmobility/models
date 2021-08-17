@@ -275,6 +275,7 @@ def concat_tensor_dict(tensor_dict: Mapping[str, tf.Tensor],
     `classes`: `tf.Tensor` of shape [batch, None, 1]
   """
   bbox_tensors = []
+  conf_tensors = []
   prob_tensors = []
 
   for _, prediction in tensor_dict.items():
@@ -284,15 +285,18 @@ def concat_tensor_dict(tensor_dict: Mapping[str, tf.Tensor],
 
     pred_prob = pred_conf * pred_prob
     pred_prob = tf.reshape(pred_prob, (-1, num_instance, num_classes))
+    pred_conf = tf.reshape(pred_conf, (-1, num_instance))
     pred_xywh = tf.reshape(pred_xywh, (-1, num_instance, 4))
 
     bbox_tensors.append(pred_xywh)
+    conf_tensors.append(pred_conf)
     prob_tensors.append(pred_prob)
 
   bbox_tensors = tf.concat(bbox_tensors, axis=1)
+  conf_tensors = tf.concat(conf_tensors, axis=1)
   prob_tensors = tf.concat(prob_tensors, axis=1)
   
-  return bbox_tensors, prob_tensors
+  return bbox_tensors, conf_tensors, prob_tensors
 
 
 def filter_boxes(box_xywh: tf.Tensor, 
