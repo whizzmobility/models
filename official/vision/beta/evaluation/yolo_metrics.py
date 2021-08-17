@@ -66,8 +66,12 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
       Overall Precision at IoU threshold
     """
 
-    bbox_true, _, prob_true = yolo_ops.concat_tensor_dict(tensor_dict=y_true,num_classes=self.num_classes)
-    bbox_pred, conf_pred, prob_pred = yolo_ops.concat_tensor_dict(tensor_dict=y_pred,num_classes=self.num_classes)
+    bbox_true, _, prob_true = yolo_ops.concat_tensor_dict(
+      tensor_dict=y_true,
+      num_classes=self.num_classes)
+    bbox_pred, conf_pred, prob_pred = yolo_ops.concat_tensor_dict(
+      tensor_dict=y_pred,
+      num_classes=self.num_classes)
 
     # filter out predictions with insufficient confidence (ignore false negatives)
     # done first to preserve shape when applying updates for iou threshold
