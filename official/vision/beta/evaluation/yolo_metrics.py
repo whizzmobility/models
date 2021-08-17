@@ -103,9 +103,21 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
 
 class AverageRecallAtIou(tf.keras.metrics.Recall):
   """Compute Average Recall at given box IOU for YOLO
-  Prediction and ground-truth labels are first filtered by IoU, Recall is then
-  calculated, defined as: true_positives / (true_positives + false_negative)
+  Recall is defined as: true_positives / (true_positives + false_negative)
   
+  COCO PrecisionAtIou logic:
+    for each detection that has a confidence score > threshold:
+      among the ground-truths, choose one that belongs to the same class 
+      and has the highest IoU with the detection
+      
+      if no ground-truth can be chosen or IoU < threshold (e.g., 0.5):
+        the detection is a false positive
+      else:
+        the detection is a true positive
+  
+  YoloV4 training is anchor boxes based, we choose the corresponding anchor box
+  and coordinate position, for each detection, with sufficient confidence instead.
+
   The predictions are accumulated in a confusion matrix, weighted by `sample_weight` 
   and the metric is then calculated from it. Weights default to 1.
   """
@@ -113,6 +125,7 @@ class AverageRecallAtIou(tf.keras.metrics.Recall):
   def __init__(self, 
                num_classes: int, 
                iou: float,
+               conf_thres: float = 0.3,
                name: Optional[str] = None, 
                class_id: Optional[int] = None,
                *args, **kwargs):
@@ -128,6 +141,7 @@ class AverageRecallAtIou(tf.keras.metrics.Recall):
     """
     super(AverageRecallAtIou, self).__init__(
         name=name, class_id=class_id, *args, **kwargs)
+    self.conf_thres = conf_thres
     self.iou_thres = iou
     self.num_classes = num_classes
 
@@ -144,21 +158,36 @@ class AverageRecallAtIou(tf.keras.metrics.Recall):
     Returns:
       Overall Recall, filtered at given IoU.
     """
-    bbox_true, prob_true = yolo_ops.concat_tensor_dict(tensor_dict=y_true,
-                                                       num_classes=self.num_classes)
-    bbox_pred, prob_pred = yolo_ops.concat_tensor_dict(tensor_dict=y_pred,
-                                                       num_classes=self.num_classes)
+    bbox_true, _, prob_true = yolo_ops.concat_tensor_dict(
+      tensor_dict=y_true,
+      num_classes=self.num_classes)
+    bbox_pred, conf_pred, prob_pred = yolo_ops.concat_tensor_dict(
+      tensor_dict=y_pred,
+      num_classes=self.num_classes)
 
+    conf_mask = conf_pred >= self.conf_thres
+    conf_mask = tf.expand_dims(conf_mask, -1)
     iou = yolo_ops.bbox_iou(bbox_true, bbox_pred)
-    iou_mask = iou > self.iou_thres
+    lack_iou_mask = iou < self.iou_thres
+    lack_iou_mask = tf.expand_dims(lack_iou_mask, -1)
 
-    prob_true = tf.boolean_mask(prob_true, iou_mask)
-    prob_true = tf.argmax(prob_true, axis=-1)
-    prob_true = tf.one_hot(prob_true, self.num_classes, on_value=True, off_value=False)
+    # set predictions to false when not enough confidence
+    # set groundtruth to false when enough confidence and not enough IoU
+    #   TP: (1) enough confidence, (2) same class, (3) enough IoU
+    #   FP: (1) enough confidence, (2) either wrong class or not enough IoU
+    #   FN: (1) not enough confidence, (2) same class
+    #   TN: (1) not enough confidence, (2) otherwise
 
-    prob_pred = tf.boolean_mask(prob_pred, iou_mask)
     prob_pred = tf.argmax(prob_pred, axis=-1)
     prob_pred = tf.one_hot(prob_pred, self.num_classes, on_value=True, off_value=False)
+    # retain predictions with sufficient confidence
+    prob_pred = tf.where(conf_mask, prob_pred, tf.fill([self.num_classes], False))
+    
+    prob_true = tf.argmax(prob_true, axis=-1)
+    prob_true = tf.one_hot(prob_true, self.num_classes, on_value=True, off_value=False)
+    conf_and_no_iou_mask = tf.math.logical_and(conf_mask, lack_iou_mask)
+    # remove ground truths with sufficient prediction confidence, not enough IoU
+    prob_true = tf.where(conf_and_no_iou_mask, tf.fill([self.num_classes], False), prob_true)
 
     return super(AverageRecallAtIou, self).update_state(
         y_true=prob_true, y_pred=prob_pred, sample_weight=None)
