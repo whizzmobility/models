@@ -77,7 +77,8 @@ class YoloLosses(hyperparams.Config):
 @dataclasses.dataclass
 class YoloEvaluation(hyperparams.Config):
   report_classwise: bool = True
-  conf_thres: float = 0.3
+  precision_conf_thres: float = 0.3
+  recall_conf_thres: float = 0.3
 
 
 @dataclasses.dataclass

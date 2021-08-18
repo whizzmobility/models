@@ -170,17 +170,17 @@ class YoloTask(base_task.Task):
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
-      for iou in [0.0, 0.25, 0.50, 0.75]:
+      for iou in [0.0, 0.25, 0.50]:
         metrics.append(yolo_metrics.PrecisionAtIou(
           num_classes=self.task_config.model.num_classes, 
           iou=iou, 
-          conf_thres=self.task_config.evaluation.conf_thres,
+          conf_thres=self.task_config.evaluation.precision_conf_thres,
           name='AP{}'.format(int(iou*100))
         ))
         metrics.append(yolo_metrics.RecallAtIou(
           num_classes=self.task_config.model.num_classes, 
           iou=iou, 
-          conf_thres=self.task_config.evaluation.conf_thres,
+          conf_thres=self.task_config.evaluation.recall_conf_thres,
           name='AR{}'.format(int(iou*100))
         ))
 
@@ -190,7 +190,7 @@ class YoloTask(base_task.Task):
             metrics.append(yolo_metrics.PrecisionAtIou(
               num_classes=self.task_config.model.num_classes, 
               iou=iou, 
-              conf_thres=self.task_config.evaluation.conf_thres,
+              conf_thres=self.task_config.evaluation.precision_conf_thres,
               name='precision_{}_{}'.format(class_num, iou),
               class_id=class_num
             ))
@@ -198,7 +198,7 @@ class YoloTask(base_task.Task):
             metrics.append(yolo_metrics.RecallAtIou(
               num_classes=self.task_config.model.num_classes, 
               iou=iou, 
-              conf_thres=self.task_config.evaluation.conf_thres,
+              conf_thres=self.task_config.evaluation.recall_conf_thres,
               name='recall_{}_{}'.format(class_num, iou),
               class_id=class_num
             ))
