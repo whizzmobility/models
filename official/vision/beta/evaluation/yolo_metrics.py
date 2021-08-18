@@ -22,7 +22,14 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
         the detection is a true positive
   
   YoloV4 training is anchor boxes based, we choose the corresponding anchor box
-  and coordinate position, for each detection, with sufficient confidence instead.
+  and coordinate position, for each detection, with sufficient confidence instead. Hence,
+    1) set predictions to false when not enough confidence
+    2) set groundtruth to false when enough confidence and not enough IoU
+
+  TP: (1) enough confidence, (2) same class, (3) enough IoU
+  FP: (1) enough confidence, (2) either wrong class or not enough IoU
+  FN: (1) not enough confidence, (2) gt detection exists
+  TN: (1) not enough confidence, (2) gt detection does not exist
 
   The predictions are accumulated in a confusion matrix, weighted by `sample_weight` 
   and the metric is then calculated from it. Weights default to 1.
@@ -66,12 +73,8 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
       Overall Precision at IoU threshold
     """
 
-    bbox_true, _, prob_true = yolo_ops.concat_tensor_dict(
-      tensor_dict=y_true,
-      num_classes=self.num_classes)
-    bbox_pred, conf_pred, prob_pred = yolo_ops.concat_tensor_dict(
-      tensor_dict=y_pred,
-      num_classes=self.num_classes)
+    bbox_true, _, prob_true = yolo_ops.concat_tensor_dict(y_true, self.num_classes)
+    bbox_pred, conf_pred, prob_pred = yolo_ops.concat_tensor_dict(y_pred, self.num_classes)
 
     conf_mask = conf_pred >= self.conf_thres
     conf_mask = tf.expand_dims(conf_mask, -1)
@@ -79,22 +82,14 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
     lack_iou_mask = iou < self.iou_thres
     lack_iou_mask = tf.expand_dims(lack_iou_mask, -1)
 
-    # set predictions to false when not enough confidence
-    # set groundtruth to false when enough confidence and not enough IoU
-    #   TP: (1) enough confidence, (2) same class, (3) enough IoU
-    #   FP: (1) enough confidence, (2) either wrong class or not enough IoU
-    #   FN: (1) not enough confidence, (2) same class
-    #   TN: (1) not enough confidence, (2) otherwise
-
-    prob_pred = tf.argmax(prob_pred, axis=-1)
-    prob_pred = tf.one_hot(prob_pred, self.num_classes, on_value=True, off_value=False)
-    # retain predictions with sufficient confidence
-    prob_pred = tf.where(conf_mask, prob_pred, tf.fill([self.num_classes], False))
+    # retain predictions with sufficient confidence, zero them otherwise
+    prob_pred = tf.where(conf_mask, prob_pred, tf.zeros([self.num_classes]))
     
+    # one-hot required, as it is casted to boolean in tf.keras.Metrics.Precision
     prob_true = tf.argmax(prob_true, axis=-1)
     prob_true = tf.one_hot(prob_true, self.num_classes, on_value=True, off_value=False)
+    # zero ground truths with sufficient prediction confidence, not enough IoU (FP)
     conf_and_no_iou_mask = tf.math.logical_and(conf_mask, lack_iou_mask)
-    # remove ground truths with sufficient prediction confidence, not enough IoU
     prob_true = tf.where(conf_and_no_iou_mask, tf.fill([self.num_classes], False), prob_true)
 
     return super(AveragePrecisionAtIou, self).update_state(
