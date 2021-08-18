@@ -172,25 +172,36 @@ class YoloTask(base_task.Task):
     if not training:
       for iou in [0.0, 0.25, 0.50, 0.75]:
         metrics.append(yolo_metrics.PrecisionAtIou(
-          num_classes=self.task_config.model.num_classes, iou=iou, name='AP{}'.format(int(iou*100))
+          num_classes=self.task_config.model.num_classes, 
+          iou=iou, 
+          conf_thres=self.task_config.evaluation.conf_thres,
+          name='AP{}'.format(int(iou*100))
         ))
         metrics.append(yolo_metrics.RecallAtIou(
-          num_classes=self.task_config.model.num_classes, iou=iou, name='AR{}'.format(int(iou*100))
+          num_classes=self.task_config.model.num_classes, 
+          iou=iou, 
+          conf_thres=self.task_config.evaluation.conf_thres,
+          name='AR{}'.format(int(iou*100))
         ))
 
         # add in class specific metrics
-        for class_num in range(self.task_config.model.num_classes):
-          metrics.append(yolo_metrics.PrecisionAtIou(
-            num_classes=self.task_config.model.num_classes, iou=iou, 
-            name='precision_{}_{}'.format(class_num, iou),
-            class_id=class_num
-          ))
+        if self.task_config.evaluation.report_classwise:
+          for class_num in range(self.task_config.model.num_classes):
+            metrics.append(yolo_metrics.PrecisionAtIou(
+              num_classes=self.task_config.model.num_classes, 
+              iou=iou, 
+              conf_thres=self.task_config.evaluation.conf_thres,
+              name='precision_{}_{}'.format(class_num, iou),
+              class_id=class_num
+            ))
 
-          metrics.append(yolo_metrics.RecallAtIou(
-            num_classes=self.task_config.model.num_classes, iou=iou, 
-            name='recall_{}_{}'.format(class_num, iou),
-            class_id=class_num
-          ))
+            metrics.append(yolo_metrics.RecallAtIou(
+              num_classes=self.task_config.model.num_classes, 
+              iou=iou, 
+              conf_thres=self.task_config.evaluation.conf_thres,
+              name='recall_{}_{}'.format(class_num, iou),
+              class_id=class_num
+            ))
           
     return metrics
 

@@ -144,6 +144,9 @@ task:
         l2_weight_decay: 0.0001
         iou_loss_thres: 0.5
         class_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      evaluation:
+        report_classwise: true
+        conf_thres: 0.3
       train_data:
         input_path: 'D:/data/tfrecords/detect_env*'
 
