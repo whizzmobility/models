@@ -64,7 +64,7 @@ def applyIouAndConfThreshold(y_true: tf.Tensor,
   return prob_true, prob_pred
 
 
-class AveragePrecisionAtIou(tf.keras.metrics.Precision):
+class PrecisionAtIou(tf.keras.metrics.Precision):
   """Compute Average Precision at given box IOU for YOLO
   Precision is defined as: true_positives / (true_positives + false_positives)
 
@@ -90,7 +90,7 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
         [num_classes, num_classes] will be allocated.
       name: `str`, name of the metric instance..
     """
-    super(AveragePrecisionAtIou, self).__init__(
+    super(PrecisionAtIou, self).__init__(
         name=name, class_id=class_id, *args, **kwargs)
     self.conf_thres = conf_thres
     self.iou_thres = iou
@@ -115,11 +115,11 @@ class AveragePrecisionAtIou(tf.keras.metrics.Precision):
                                                     conf_thres=self.conf_thres,
                                                     iou_thres=self.iou_thres)
 
-    return super(AveragePrecisionAtIou, self).update_state(
+    return super(PrecisionAtIou, self).update_state(
         y_true=prob_true, y_pred=prob_pred, sample_weight=None)
 
 
-class AverageRecallAtIou(tf.keras.metrics.Recall):
+class RecallAtIou(tf.keras.metrics.Recall):
   """Compute Average Recall at given box IOU for YOLO
   Recall is defined as: true_positives / (true_positives + false_negative)
 
@@ -144,7 +144,7 @@ class AverageRecallAtIou(tf.keras.metrics.Recall):
         [num_classes, num_classes] will be allocated.
       name: `str`, name of the metric instance..
     """
-    super(AverageRecallAtIou, self).__init__(
+    super(RecallAtIou, self).__init__(
         name=name, class_id=class_id, *args, **kwargs)
     self.conf_thres = conf_thres
     self.iou_thres = iou
@@ -169,5 +169,5 @@ class AverageRecallAtIou(tf.keras.metrics.Recall):
                                                     conf_thres=self.conf_thres,
                                                     iou_thres=self.iou_thres)
 
-    return super(AverageRecallAtIou, self).update_state(
+    return super(RecallAtIou, self).update_state(
         y_true=prob_true, y_pred=prob_pred, sample_weight=None)
