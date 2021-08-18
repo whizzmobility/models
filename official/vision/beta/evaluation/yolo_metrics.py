@@ -33,8 +33,8 @@ def applyIouAndConfThreshold(y_true: tf.Tensor,
 
   TP: (1) enough confidence, (2) same class, (3) enough IoU
   FP: (1) enough confidence, (2) either wrong class or not enough IoU
-  FN: (1) not enough confidence, (2) same class
-  TN: (1) not enough confidence, (2) otherwise
+  FN: (1) not enough confidence, (2) gt detection exists
+  TN: (1) not enough confidence, (2) gt detection does not exist
 
   Args:
     y_true: The ground truth values, shape (batch, yind, xind, anchorind, xywh/conf/classes)
@@ -50,15 +50,14 @@ def applyIouAndConfThreshold(y_true: tf.Tensor,
   lack_iou_mask = iou < iou_thres
   lack_iou_mask = tf.expand_dims(lack_iou_mask, -1)
 
-  prob_pred = tf.argmax(prob_pred, axis=-1)
-  prob_pred = tf.one_hot(prob_pred, num_classes, on_value=True, off_value=False)
-  # retain predictions with sufficient confidence
-  prob_pred = tf.where(conf_mask, prob_pred, tf.fill([num_classes], False))
+  # retain predictions with sufficient confidence, zero them otherwise
+  prob_pred = tf.where(conf_mask, prob_pred, tf.zeros([num_classes]))
   
+  # one-hot required, as it is casted to boolean in tf.keras.Metrics.Precision
   prob_true = tf.argmax(prob_true, axis=-1)
   prob_true = tf.one_hot(prob_true, num_classes, on_value=True, off_value=False)
+  # zero ground truths with sufficient prediction confidence, not enough IoU (FP)
   conf_and_no_iou_mask = tf.math.logical_and(conf_mask, lack_iou_mask)
-  # remove ground truths with sufficient prediction confidence, not enough IoU
   prob_true = tf.where(conf_and_no_iou_mask, tf.fill([num_classes], False), prob_true)
 
   return prob_true, prob_pred
@@ -75,7 +74,7 @@ class PrecisionAtIou(tf.keras.metrics.Precision):
   def __init__(self, 
                num_classes: int, 
                iou: float,
-               conf_thres: float = 0.3,
+               conf_thres: float,
                name: Optional[str] = None, 
                class_id: Optional[int] = None,
                *args, **kwargs):
@@ -130,7 +129,7 @@ class RecallAtIou(tf.keras.metrics.Recall):
   def __init__(self, 
                num_classes: int, 
                iou: float,
-               conf_thres: float = 0.3,
+               conf_thres: float,
                name: Optional[str] = None, 
                class_id: Optional[int] = None,
                *args, **kwargs):
