@@ -129,7 +129,7 @@ class MultitaskModule(export_base.ExportModule):
         indices = tf.image.non_max_suppression(boxes=boxes,
                                                scores=scores,
                                                max_output_size=20,
-                                               iou_threshold=0.5,
+                                               iou_threshold=0.25,
                                                score_threshold=0.25)
         
         boxes = tf.gather(boxes, indices)

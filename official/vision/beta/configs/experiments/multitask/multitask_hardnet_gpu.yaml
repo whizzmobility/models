@@ -50,11 +50,13 @@ task:
       {
         name: "yolo", # has to match task_configs's
         init_checkpoint_modules: 'backbone',
-        num_classes: 6, # has to match task_configs's
+        num_classes: 12, # has to match task_configs's
         decoder: {
           type: 'pan',
           pan: {
-            levels: 3}},
+            levels: 3,
+            num_filters: 128,
+            num_convs: 3}},
         head: {
           anchor_per_scale: 3,
           strides: [16, 32, 64],  # depends on downsampling on model side
@@ -66,7 +68,7 @@ task:
   task_routines: !!python/tuple
   - task_name: segmentation  # has to match model's
     task_weight: 1.0
-    eval_steps: null
+    eval_steps: 1021
     task_config:
       model:
         input_size: [256, 256, 3]  # has to match model's
@@ -100,7 +102,7 @@ task:
         drop_remainder: false
   - task_name: classification  # has to match model's
     task_weight: 1.0
-    eval_steps: null
+    eval_steps: 621
     task_config:
       model:
         input_size: [256, 256, 3]  # has to match model's
@@ -130,11 +132,11 @@ task:
         report_per_class_metrics: true
   - task_name: yolo # has to match model's
     task_weight: 1.0
-    eval_steps: null
+    eval_steps: 600
     task_config:
       model:
         input_size: [256, 256, 3]  # has to match model's
-        num_classes: 6  # has to match model's
+        num_classes: 12  # has to match model's
         head:
           anchor_per_scale: 3
           strides: [16, 32, 64]  # depends on downsampling on model side
@@ -148,7 +150,7 @@ task:
         report_classwise: true
         conf_thres: 0.3
       train_data:
-        input_path: 'D:/data/tfrecords/detect_env*'
+        input_path: '/mnt/ssd2/tfrecords/detect_env2*'
 
         global_batch_size: 1 ###
 
@@ -166,7 +168,7 @@ task:
         randaug_magnitude: 5
         randaug_available_ops: ['AutoContrast', 'Equalize', 'Invert', 'Posterize', 'Solarize', 'Color', 'Contrast', 'Brightness', 'Sharpness', 'Cutout', 'SolarizeAdd']
       validation_data:
-        input_path: 'D:/data/tfrecords/detect_env*'
+        input_path: '/mnt/ssd2/tfrecords/detect_env2*'
         global_batch_size: 1 ###
         is_training: false
         max_bbox_per_scale: 150
@@ -189,7 +191,7 @@ trainer:
   
   best_checkpoint_eval_metric: 'mean_iou' ###
   continuous_eval_timeout: 3600
-  max_to_keep: 100
+  max_to_keep: 5
   optimizer_config:
     ema: null
     learning_rate:
