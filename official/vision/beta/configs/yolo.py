@@ -75,12 +75,20 @@ class YoloLosses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class YoloEvaluation(hyperparams.Config):
+  report_classwise: bool = True
+  precision_conf_thres: float = 0.3
+  recall_conf_thres: float = 0.3
+
+
+@dataclasses.dataclass
 class YoloTask(cfg.TaskConfig):
   """The model config."""
   model: YoloModel = YoloModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: YoloLosses = YoloLosses()
+  evaluation: YoloEvaluation = YoloEvaluation()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(

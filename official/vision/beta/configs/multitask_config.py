@@ -25,7 +25,7 @@ from official.vision.beta.configs.semantic_segmentation import \
   SegmentationHead
 from official.vision.beta.configs.yolo import \
   DataConfig as YoloDataConfig, \
-  YoloLosses, YoloHead
+  YoloLosses, YoloEvaluation, YoloHead
 
 
 @dataclasses.dataclass
@@ -112,6 +112,7 @@ class YoloSubtask(cfg.TaskConfig):
   train_data: YoloDataConfig = YoloDataConfig(is_training=True)
   validation_data: YoloDataConfig = YoloDataConfig(is_training=False)
   losses: YoloLosses = YoloLosses()
+  evaluation: YoloEvaluation = YoloEvaluation()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(
@@ -123,9 +124,7 @@ def multitask_vision() -> multi_cfg.MultiTaskExperimentConfig:
   """
   Vision task with single backbone and multiple heads.
   Each head can be a segmenter, detector or classifier.
-  TODO: support n heads instead of just one segmenter, one classifier.
   TODO: use same num_class and input_size in both task and model definition
-  TODO: check where eval steps is used
 
   multi_cfg.MultiTaskConfig:
     - Retains each task_name, entire task, eval_steps and weights,

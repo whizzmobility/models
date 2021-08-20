@@ -170,26 +170,39 @@ class YoloTask(base_task.Task):
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
-      metrics.append(yolo_metrics.AveragePrecisionAtIou(
-        num_classes=self.task_config.model.num_classes, iou=0.25, name='AP25'
-      ))
-      metrics.append(yolo_metrics.AveragePrecisionAtIou(
-        num_classes=self.task_config.model.num_classes, iou=0.5, name='AP50'
-      ))
-
-      # add in class specific metrics
-      for class_num in range(self.task_config.model.num_classes):
-        metrics.append(yolo_metrics.AveragePrecisionAtIou(
-          num_classes=self.task_config.model.num_classes, iou=0.25, 
-          name='precision_%s' %str(class_num),
-          class_id=class_num
+      for iou in [0.0, 0.25, 0.50]:
+        metrics.append(yolo_metrics.PrecisionAtIou(
+          num_classes=self.task_config.model.num_classes, 
+          iou=iou, 
+          conf_thres=self.task_config.evaluation.precision_conf_thres,
+          name='AP{}'.format(int(iou*100))
         ))
-        metrics.append(yolo_metrics.AveragePrecisionAtIou(
-          num_classes=self.task_config.model.num_classes, iou=0.5, 
-          name='precision_%s' %str(class_num),
-          class_id=class_num
+        metrics.append(yolo_metrics.RecallAtIou(
+          num_classes=self.task_config.model.num_classes, 
+          iou=iou, 
+          conf_thres=self.task_config.evaluation.recall_conf_thres,
+          name='AR{}'.format(int(iou*100))
         ))
 
+        # add in class specific metrics
+        if self.task_config.evaluation.report_classwise:
+          for class_num in range(self.task_config.model.num_classes):
+            metrics.append(yolo_metrics.PrecisionAtIou(
+              num_classes=self.task_config.model.num_classes, 
+              iou=iou, 
+              conf_thres=self.task_config.evaluation.precision_conf_thres,
+              name='precision_{}_{}'.format(class_num, iou),
+              class_id=class_num
+            ))
+
+            metrics.append(yolo_metrics.RecallAtIou(
+              num_classes=self.task_config.model.num_classes, 
+              iou=iou, 
+              conf_thres=self.task_config.evaluation.recall_conf_thres,
+              name='recall_{}_{}'.format(class_num, iou),
+              class_id=class_num
+            ))
+          
     return metrics
 
   def train_step(self,
