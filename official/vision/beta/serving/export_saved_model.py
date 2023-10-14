@@ -73,6 +73,10 @@ flags.DEFINE_string(
     'input_image_size', '224,224',
     'The comma-separated string of two integers representing the height,width '
     'of the input to the model.')
+flags.DEFINE_string('export_checkpoint_subdir', 'checkpoint',
+                    'The subdirectory for checkpoints.')
+flags.DEFINE_string('export_saved_model_subdir', 'saved_model',
+                    'The subdirectory for saved model.')
 flags.DEFINE_bool('argmax_outputs', False, 'Argmax the last channel of all outputs.')
 flags.DEFINE_bool('visualise_outputs', False, 'Apply colormap to all single channel outputs.')
 flags.DEFINE_bool('class_present_outputs', False, 'Gather unique values in output.')
@@ -98,8 +102,8 @@ def main(_):
       params=params,
       checkpoint_path=FLAGS.checkpoint_path,
       export_dir=FLAGS.export_dir,
-      export_checkpoint_subdir='checkpoint',
-      export_saved_model_subdir='saved_model',
+      export_checkpoint_subdir=FLAGS.export_checkpoint_subdir,
+      export_saved_model_subdir=FLAGS.export_saved_model_subdir,
       argmax_outputs=FLAGS.argmax_outputs,
       visualise_outputs=FLAGS.visualise_outputs,
       class_present_outputs=FLAGS.class_present_outputs)

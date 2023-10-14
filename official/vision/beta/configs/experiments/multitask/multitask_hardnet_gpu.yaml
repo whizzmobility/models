@@ -112,6 +112,7 @@ task:
         one_hot: true # required for classification metrics
       train_data:
         input_path: '/mnt/ssd2/tfrecords/cls_env_train*'
+        decode_jpeg_only: false
 
         global_batch_size: 16 ###
 
@@ -124,6 +125,7 @@ task:
         randaug_magnitude: 5
       validation_data:
         input_path: '/mnt/ssd2/tfrecords/cls_env_val*'
+        decode_jpeg_only: false
         global_batch_size: 1
         is_training: false
         preserve_aspect_ratio: false
